@@ -637,6 +637,11 @@ select option { background: var(--surface); }
       <div style="font-size:10px;color:var(--faint);text-align:center;letter-spacing:.3px;">
         Family Panel <span id="app-version" style="color:var(--muted);"></span>
       </div>
+      <div id="update-dot" style="display:none;margin-top:8px;text-align:center;">
+        <button onclick="showSection('settings')" style="background:var(--gold-bg);border:1px solid var(--gold-bd);border-radius:20px;color:var(--gold);font-size:10px;font-weight:600;padding:3px 10px;cursor:pointer;font-family:inherit;letter-spacing:.3px;">
+          ✦ Update available
+        </button>
+      </div>
     </div>
   </nav>
 
@@ -797,6 +802,17 @@ select option { background: var(--surface); }
     <div id="section-settings" class="section">
       <div class="page-title">Settings</div>
       <div class="page-sub">Configuration for the family panel.</div>
+
+      <!-- Update checker -->
+      <div class="panel" style="margin-bottom:20px;" id="update-panel">
+        <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;">
+          <div class="panel-title">Updates</div>
+          <button class="btn btn-secondary btn-sm" onclick="checkForUpdate(true)" id="update-check-btn">Check now</button>
+        </div>
+        <div id="update-status" style="padding:14px 20px;font-size:13px;color:var(--muted);">
+          Checking for updates…
+        </div>
+      </div>
 
       <div class="panel">
         <div class="setting-row">
@@ -2941,6 +2957,87 @@ function initTheme() {
   applyThemePreset(preset, mode);
 }
 
+async function checkForUpdate(manual = false) {
+  const statusEl  = document.getElementById('update-status');
+  const dotEl     = document.getElementById('update-dot');
+  const btnEl     = document.getElementById('update-check-btn');
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--muted)">Checking…</span>';
+  if (btnEl)    btnEl.disabled = true;
+
+  try {
+    const [localRes, ghRes] = await Promise.all([
+      fetch('/api/version'),
+      fetch('https://api.github.com/repos/calebgab/home-assistant-family-panel/releases/latest', {
+        headers: { 'Accept': 'application/vnd.github+json' }
+      })
+    ]);
+
+    const { version: local } = await localRes.json();
+    const gh = await ghRes.json();
+    const latest   = (gh.tag_name || '').replace(/^v/, '');
+    const htmlUrl  = gh.html_url || 'https://github.com/calebgab/home-assistant-family-panel/releases/latest';
+    const body     = gh.body || '';
+
+    // Simple version comparison — works for CalVer (2026.3.14.1) and SemVer
+    const isNewer = latest && latest !== local && compareVersions(latest, local) > 0;
+
+    if (!statusEl) return;
+
+    if (!latest) {
+      statusEl.innerHTML = '<span style="color:var(--muted)">Could not reach GitHub — check your internet connection.</span>';
+    } else if (isNewer) {
+      // Show update banner
+      const notesHtml = body
+        ? `<div style="margin-top:10px;padding:10px 14px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--muted);line-height:1.6;white-space:pre-wrap;max-height:120px;overflow-y:auto;">${escHtml(body.slice(0, 800))}${body.length > 800 ? '…' : ''}</div>`
+        : '';
+      statusEl.innerHTML = `
+        <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;color:var(--text);margin-bottom:2px;">
+              🎉 Version <span style="color:var(--gold)">${escHtml(latest)}</span> is available
+            </div>
+            <div style="font-size:12px;color:var(--muted);">You are running <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;">${escHtml(local)}</code></div>
+            ${notesHtml}
+          </div>
+          <a href="${escHtml(htmlUrl)}" target="_blank" rel="noopener"
+             style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--gold);color:#fff;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0;">
+            View release ↗
+          </a>
+        </div>`;
+      if (dotEl) dotEl.style.display = '';
+    } else {
+      statusEl.innerHTML = `
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="color:var(--green);font-size:16px;">✓</span>
+          <span style="color:var(--muted);">You're on the latest version <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;">${escHtml(local)}</code></span>
+        </div>`;
+      if (dotEl) dotEl.style.display = 'none';
+    }
+  } catch (e) {
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--muted)">Update check failed — ' + escHtml(e.message) + '</span>';
+  } finally {
+    if (btnEl) btnEl.disabled = false;
+  }
+}
+
+function compareVersions(a, b) {
+  // Splits on '.' and '-', compares segment by segment numerically then lexically
+  const seg = s => s.replace('-', '.').split('.').map(x => isNaN(x) ? x : Number(x));
+  const av = seg(a), bv = seg(b);
+  for (let i = 0; i < Math.max(av.length, bv.length); i++) {
+    const ai = av[i] ?? 0, bi = bv[i] ?? 0;
+    if (ai > bi) return 1;
+    if (ai < bi) return -1;
+  }
+  return 0;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function init() {
+
 async function init() {
   // Wire dedup checkbox to update its label live
   document.getElementById('cfg-dedup').addEventListener('change', function() {
@@ -2962,11 +3059,12 @@ async function init() {
     D = await fetchData();
     initTheme();
     renderUsers();
-    // Show version
+    // Show version + check for updates
     try {
       const vr = await fetch('/api/version');
       if (vr.ok) { const vd = await vr.json(); document.getElementById('app-version').textContent = 'v' + (vd.version || ''); }
     } catch {}
+    checkForUpdate(); // non-blocking — runs in background
   } catch (e) {
     document.getElementById('main').innerHTML = `
       <div style="padding:40px;text-align:center;">

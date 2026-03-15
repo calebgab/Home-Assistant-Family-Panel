@@ -1,0 +1,24 @@
+{
+  "name": "home-assistant-family-panel",
+  "version": "2026.3.14.1",
+  "description": "A self-hosted family dashboard built on Home Assistant API. Displays shared calendars, chores tracker, reminders, presence, smart home controls, and sensors - all in a single always-on screen.",
+  "main": "server.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/calebgab/home-assistant-family-panel.git"
+  },
+  "homepage": "https://github.com/calebgab/home-assistant-family-panel#readme",
+  "bugs": {
+    "url": "https://github.com/calebgab/home-assistant-family-panel/issues"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js --port 8080"
+  },
+  "keywords": ["home-assistant", "family", "dashboard", "ms365", "calendar", "chores", "presence"],
+  "author": "calebgab",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

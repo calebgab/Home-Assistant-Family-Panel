@@ -1,0 +1,19 @@
+# ── Secrets & personal data ─────────────────────────────
+# These files contain your HA token, family names, and passwords.
+# Never commit them. Copy the .example versions and fill in your values.
+config.json
+data.json
+
+# ── Runtime ──────────────────────────────────────────────
+node_modules/
+*.log
+npm-debug.log*
+
+# ── OS / editor ──────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ── Legacy / unused ──────────────────────────────────────
+server.py

@@ -1,0 +1,126 @@
+{
+  "users": [
+    {
+      "id": "laura",
+      "name": "Laura",
+      "color": "#a78bfa",
+      "emoji": "\ud83d\udc69",
+      "isAdult": true,
+      "home": true,
+      "haEntity": "person.laura"
+    },
+    {
+      "id": "bob",
+      "name": "Bob",
+      "color": "#5b9cf6",
+      "emoji": "\ud83d\udc68",
+      "isAdult": true,
+      "home": false,
+      "haEntity": "person.bob"
+    },
+    {
+      "id": "charlie",
+      "name": "Charlie",
+      "color": "#fb923c",
+      "emoji": "\ud83e\uddd2",
+      "isAdult": false,
+      "age": 8,
+      "home": true
+    }
+  ],
+  "chores": [
+    {
+      "id": "h1",
+      "userId": "laura",
+      "label": "\ud83e\udee7 Dishes",
+      "recur": "daily",
+      "done": false,
+      "doneDate": null
+    },
+    {
+      "id": "h2",
+      "userId": "laura",
+      "label": "Grocery shop",
+      "recur": "weekly",
+      "done": false,
+      "doneDate": null
+    },
+    {
+      "id": "c1",
+      "userId": "bob",
+      "label": "\ud83d\uddd1\ufe0f Empty bins",
+      "recur": "weekly",
+      "done": false,
+      "doneDate": null
+    },
+    {
+      "id": "c2",
+      "userId": "bob",
+      "label": "Mow lawn",
+      "recur": "weekly",
+      "done": false,
+      "doneDate": null
+    },
+    {
+      "id": "k1",
+      "userId": "charlie",
+      "label": "\ud83e\udea5 Brush teeth",
+      "recur": "daily",
+      "done": false,
+      "doneDate": null
+    },
+    {
+      "id": "k2",
+      "userId": "charlie",
+      "label": "\ud83e\uddf8 Tidy toys",
+      "recur": "daily",
+      "done": false,
+      "doneDate": null
+    }
+  ],
+  "reminders": [
+    {
+      "id": "r1",
+      "text": "Book dentist appointments",
+      "done": false
+    },
+    {
+      "id": "r2",
+      "text": "Car service due next month",
+      "done": false
+    }
+  ],
+  "events": [],
+  "controls": {
+    "lounge": false,
+    "kitchen": false,
+    "ac": false,
+    "hotwater": true,
+    "tv": false,
+    "music": false
+  },
+  "calendars": [
+    {
+      "name": "Laura",
+      "entity": "calendar.m365calendar_laura_calendar",
+      "color": "#a78bfa"
+    },
+    {
+      "name": "Bob",
+      "entity": "calendar.m365calendar_bob_calendar",
+      "color": "#5b9cf6"
+    }
+  ],
+  "state_entities": [
+    "lock.front_door_lock",
+    "lock.back_door_lock",
+    "climate.living_room",
+    "sensor.indoor_temperature",
+    "sensor.indoor_humidity"
+  ],
+  "settings": {
+    "weatherLocation": "Hamilton, NZ",
+    "pollIntervalSeconds": 30,
+    "calendarDedup": true
+  }
+}

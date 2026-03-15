@@ -1,0 +1,2951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Family Panel — Admin</title>
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#0e0d0c">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Defaults — overridden immediately by applyThemePreset() on load */
+  --bg:       #0e0d0c;
+  --surface:  #161512;
+  --surface2: #1d1b18;
+  --border:   rgba(255,255,255,0.07);
+  --border2:  rgba(255,255,255,0.12);
+  --gold:     #e8a840;
+  --gold-bg:  rgba(232,168,64,0.08);
+  --gold-bd:  rgba(232,168,64,0.20);
+  --gold-dim: rgba(232,168,64,0.12);
+  --gold-mid: rgba(232,168,64,0.28);
+  --text:     #f0ece4;
+  --muted:    rgba(240,236,228,0.45);
+  --faint:    rgba(240,236,228,0.20);
+  --green:    #5db87a;
+  --green-bg: rgba(93,184,122,0.10);
+  --red:      #e86060;
+  --red-bg:   rgba(232,96,96,0.10);
+  --blue:     #58a6ff;
+  --r10: 10px;
+  --r6:  6px;
+  --ease: 0.15s cubic-bezier(.4,0,.2,1);
+  --shadow: 0 1px 4px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.10);
+}
+
+html, body { min-height: 100vh; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; }
+
+/* ── HEADER ──────────────────────────────────────────────── */
+#header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 60px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 1px 0 var(--border);
+}
+#header-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+#header-logo span:first-child {
+  font-family: 'Nunito', ui-sans-serif, system-ui, sans-serif;
+  font-size: 20px;
+  color: var(--text);
+}
+#header-logo .badge {
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-bd);
+  border-radius: 5px;
+  color: var(--gold);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .7px;
+  text-transform: uppercase;
+  padding: 2px 7px;
+}
+#header-spacer { flex: 1; }
+.header-link {
+  font-size: 12px;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 5px 10px;
+  border-radius: var(--r6);
+  transition: all var(--ease);
+}
+.header-link:hover { background: var(--surface2); color: var(--text); }
+.header-link.active { color: var(--gold); font-weight: 600; }
+
+#save-status {
+  font-size: 11px;
+  color: var(--faint);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color var(--ease);
+}
+#save-status.saving { color: var(--gold); }
+#save-status.saved  { color: var(--green); }
+#save-status.error  { color: var(--red); }
+
+/* ── LAYOUT ──────────────────────────────────────────────── */
+#layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: calc(100vh - 60px);
+}
+
+/* ── SIDEBAR ─────────────────────────────────────────────── */
+#sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 20px 12px;
+  position: sticky;
+  top: 60px;
+  height: calc(100vh - 60px);
+  overflow-y: auto;
+}
+.sidebar-section { margin-bottom: 24px; }
+.sidebar-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--faint);
+  padding: 0 10px;
+  margin-bottom: 6px;
+}
+.sidebar-btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: var(--r6);
+  cursor: pointer;
+  transition: all var(--ease);
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+  width: 100%;
+  background: transparent;
+  border: none;
+  font-family: 'DM Sans', sans-serif;
+  text-align: left;
+}
+.sidebar-btn:hover { background: var(--surface2); color: var(--text); }
+.sidebar-btn.active { background: var(--gold-bg); color: var(--gold); font-weight: 600; }
+.sidebar-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.7; flex-shrink: 0; }
+
+/* ── MAIN CONTENT ────────────────────────────────────────── */
+#main { padding: 28px 32px; }
+
+.section { display: none; }
+.section.active { display: block; }
+
+/* ── PAGE HEADER ─────────────────────────────────────────── */
+.page-title {
+  font-family: 'Nunito', ui-sans-serif, system-ui, sans-serif;
+  font-size: 28px;
+  font-weight: 400;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.page-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+
+/* ── CARD ────────────────────────────────────────────────── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r10);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.panel-header {
+  padding: 14px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.panel-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.panel-sub   { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.panel-body  { padding: 20px; }
+
+/* ── THEME PRESET CARDS ─────────────────────────────────── */
+.preset-card {
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color var(--ease), transform var(--ease), box-shadow var(--ease);
+  position: relative;
+}
+.preset-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,.25); }
+.preset-card.selected { border-color: var(--gold); }
+.preset-card.selected::after {
+  content: '✓';
+  position: absolute;
+  top: 6px; right: 7px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--gold);
+  border-radius: 50%;
+  width: 16px; height: 16px;
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1;
+}
+.preset-swatch {
+  height: 64px;
+  display: flex;
+  gap: 3px;
+  padding: 8px;
+  align-items: flex-end;
+}
+.preset-swatch-bar { flex: 1; border-radius: 3px; height: 100%; }
+.preset-label {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 10px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── TABLE ───────────────────────────────────────────────── */
+table { width: 100%; border-collapse: collapse; }
+th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: var(--faint);
+  padding: 0 12px 10px;
+  border-bottom: 1px solid var(--border);
+}
+td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text);
+  vertical-align: middle;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface2); }
+
+/* ── FORM ELEMENTS ───────────────────────────────────────── */
+.form-row { display: flex; gap: 12px; margin-bottom: 12px; align-items: flex-end; }
+.form-row > * { flex: 1; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  color: var(--muted);
+}
+input[type="text"], input[type="number"], input[type="email"], input[type="password"],
+input[type="date"], input[type="time"], input[type="color"], select, textarea {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r6);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  padding: 8px 11px;
+  outline: none;
+  width: 100%;
+  transition: border-color var(--ease);
+  -webkit-appearance: none;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-bg); }
+input[type="color"] { padding: 3px 5px; height: 36px; cursor: pointer; }
+textarea { resize: vertical; min-height: 80px; }
+select option { background: var(--surface); }
+
+/* ── BUTTONS ─────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--r6);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all var(--ease);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
+.btn-primary  { background: var(--gold); color: #fff; }
+.btn-primary:hover  { opacity: .88; }
+.btn-secondary{ background: var(--surface2); border: 1px solid var(--border); color: var(--text); }
+.btn-secondary:hover{ background: var(--bg); }
+.btn-danger   { background: var(--red-bg); border: 1px solid rgba(192,57,43,.2); color: var(--red); }
+.btn-danger:hover   { background: var(--red); color: #fff; }
+.btn-success  { background: var(--green-bg); border: 1px solid rgba(45,138,82,.2); color: var(--green); }
+.btn-success:hover  { background: var(--green); color: #fff; }
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-xs { padding: 3px 8px; font-size: 10px; }
+
+/* ── BADGES ──────────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.badge-daily   { background: rgba(37,99,235,.1);  color: var(--blue);  border: 1px solid rgba(37,99,235,.15); }
+.badge-weekly  { background: var(--gold-bg);       color: var(--gold);  border: 1px solid var(--gold-bd); }
+.badge-monthly { background: rgba(147,51,234,.1);  color: #7c3aed;      border: 1px solid rgba(147,51,234,.15); }
+.badge-yearly  { background: rgba(236,72,153,.1);  color: #db2777;      border: 1px solid rgba(236,72,153,.15); }
+.badge-once    { background: var(--surface2);      color: var(--muted); border: 1px solid var(--border); }
+
+/* ── CHORE PERSON AVATAR PICKER ── */
+.person-avatar-pick {
+  width: 44px; height: 44px; border-radius: 50%; cursor: pointer;
+  border: 3px solid transparent; display: flex; align-items: center;
+  justify-content: center; font-size: 20px; overflow: hidden;
+  transition: border-color .15s, transform .15s; position: relative;
+  flex-shrink: 0;
+}
+.person-avatar-pick img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.person-avatar-pick.selected { border-color: var(--gold); transform: scale(1.1); }
+.person-avatar-pick-name {
+  font-size: 9px; text-align: center; color: var(--muted);
+  margin-top: 3px; max-width: 48px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.person-avatar-wrap { display: flex; flex-direction: column; align-items: center; cursor: pointer; }
+
+
+.picker-chip {
+  padding: 5px 11px; border-radius: 20px; font-size: 11px; font-weight: 600;
+  cursor: pointer; border: 1px solid var(--border2); background: var(--surface2);
+  color: var(--muted); transition: all .15s; user-select: none;
+}
+.picker-chip.on { background: var(--gold-dim); border-color: var(--gold-mid); color: var(--gold); }
+.reset-time-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+  background: var(--surface2); border: 1px solid var(--border2); color: var(--text);
+}
+.reset-time-chip button {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 13px; line-height: 1; padding: 0; transition: color .15s;
+}
+.reset-time-chip button:hover { color: #ef4444; }
+
+/* ── SCHEDULE OVERVIEW ── */
+.sched-grid {
+  display: grid; gap: 1px; min-width: 500px;
+  background: var(--border);
+  border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+}
+.sched-hdr {
+  background: var(--surface2); padding: 6px 8px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .5px; color: var(--muted); text-align: center;
+}
+.sched-hdr.today { color: var(--gold); }
+.sched-cell {
+  background: var(--surface); padding: 5px 6px; min-height: 36px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.sched-cell.today { background: var(--gold-dim); }
+.sched-chip {
+  font-size: 9px; padding: 2px 6px; border-radius: 10px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-weight: 600;
+}
+
+
+.color-swatch {
+  width: 16px; height: 16px; border-radius: 50%; display: inline-block;
+  border: 2px solid rgba(0,0,0,0.08); flex-shrink: 0;
+}
+
+/* ── USER CARD (grid) ────────────────────────────────────── */
+#user-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.user-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r10);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  transition: box-shadow var(--ease);
+}
+.user-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+.user-card-top {
+  padding: 18px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.user-big-avatar {
+  width: 56px; height: 56px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px;
+}
+.user-card-name { font-size: 15px; font-weight: 600; color: var(--text); }
+.user-card-meta { font-size: 11px; color: var(--muted); }
+.user-card-actions {
+  padding: 10px 12px;
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+/* ── CHORE LIST ──────────────────────────────────────────── */
+.chore-list-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.chore-list-row:last-child { border-bottom: none; }
+.chore-person-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px 2px 5px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 600;
+}
+.chore-list-label { flex: 1; font-size: 13px; color: var(--text); }
+
+/* ── ADD CHORE INLINE FORM ───────────────────────────────── */
+#add-chore-form {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r10);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  display: none;
+}
+#add-chore-form.open { display: block; }
+
+/* ── REMINDER LIST ───────────────────────────────────────── */
+.reminder-admin-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.reminder-admin-row:last-child { border-bottom: none; }
+.reminder-done-pill {
+  font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px;
+  padding: 2px 7px; border-radius: 10px;
+}
+.reminder-done-pill.done { background: var(--green-bg); color: var(--green); }
+.reminder-done-pill.open { background: var(--gold-bg); color: var(--gold); }
+
+/* ── SETTINGS ────────────────────────────────────────────── */
+.setting-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+}
+.setting-row:last-child { border-bottom: none; }
+.setting-info { flex: 1; }
+.setting-name  { font-size: 13px; font-weight: 500; color: var(--text); }
+.setting-desc  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.setting-control { min-width: 180px; }
+
+/* ── MODAL ───────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.35); backdrop-filter: blur(3px);
+  z-index: 100; display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity .18s ease;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  padding: 24px; width: 440px; max-width: 95vw;
+  box-shadow: 0 20px 60px rgba(0,0,0,.15);
+  transform: translateY(10px); transition: transform .18s ease;
+  max-height: 85vh; overflow-y: auto;
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal h3 { font-family: 'Nunito', ui-sans-serif, system-ui, sans-serif; font-size: 22px; color: var(--text); margin-bottom: 16px; }
+.modal-actions { display: flex; gap: 8px; margin-top: 18px; }
+.modal-actions .btn { flex: 1; justify-content: center; }
+.modal-row { display: flex; gap: 12px; }
+
+/* ── TOAST ───────────────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--text); color: #fff;
+  border-radius: var(--r10); padding: 10px 16px;
+  font-size: 12px; font-weight: 500;
+  transform: translateY(60px); opacity: 0; transition: all .25s ease;
+  z-index: 999; pointer-events: none;
+}
+#toast.show { transform: translateY(0); opacity: 1; }
+#toast.ok   { background: var(--green); }
+#toast.err  { background: var(--red); }
+
+/* ── EMPTY STATE ─────────────────────────────────────────── */
+.empty-state {
+  text-align: center; padding: 40px 20px; color: var(--muted);
+}
+.empty-state .empty-icon { font-size: 36px; margin-bottom: 10px; }
+.empty-state p { font-size: 13px; }
+
+/* ── ANIMATIONS ──────────────────────────────────────────── */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.section.active { animation: fadeUp .25s ease; }
+
+/* ── TOGGLE SWITCH ───────────────────────────────────────── */
+.toggle-wrap { display: flex; align-items: center; gap: 8px; }
+.toggle {
+  position: relative; width: 40px; height: 22px; flex-shrink: 0;
+}
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; inset: 0;
+  background: var(--border2); border-radius: 11px; cursor: pointer;
+  transition: background var(--ease);
+}
+.toggle-slider::after {
+  content: ''; position: absolute; width: 16px; height: 16px;
+  left: 3px; top: 3px; background: white; border-radius: 50%;
+  transition: transform var(--ease); box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.toggle input:checked + .toggle-slider { background: var(--gold); }
+.toggle input:checked + .toggle-slider::after { transform: translateX(18px); }
+
+/* ── EMOJI PICKER ────────────────────────────────────────── */
+.emoji-grid {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-top: 6px;
+}
+.emoji-opt {
+  width: 36px; height: 36px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; cursor: pointer; border: 2px solid transparent;
+  transition: all var(--ease); background: var(--surface2);
+}
+.emoji-opt:hover { background: var(--bg); transform: scale(1.15); }
+.emoji-opt.selected { border-color: var(--gold); background: var(--gold-bg); }
+</style>
+<script>
+// Pre-load: apply dark mode from localStorage before first paint to avoid flash
+(function() {
+  try {
+    if (localStorage.getItem('fp-theme') === 'light') {
+      document.documentElement.classList.add('light');
+    }
+  } catch {}
+})();
+</script>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <a id="header-logo" href="/">
+    <span>Family Panel</span>
+    <span class="badge">Admin</span>
+  </a>
+  <div id="header-spacer"></div>
+  <button id="theme-btn" onclick="toggleTheme()" title="Toggle light/dark mode" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-size:14px;padding:4px 10px;cursor:pointer;transition:all var(--ease);line-height:1;">🌙</button>
+  <a class="header-link" href="/" target="_blank">View Dashboard ↗</a>
+  <div id="save-status">● All saved</div>
+</div>
+
+<div id="layout">
+  <!-- SIDEBAR -->
+  <nav id="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Manage</div>
+      <button class="sidebar-btn active" onclick="showSection('users')">
+        <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
+        Family Members
+      </button>
+      <button class="sidebar-btn" onclick="showSection('chores')">
+        <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Chores
+      </button>
+      <button class="sidebar-btn" onclick="showSection('reminders')">
+        <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
+        Reminders
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Home Assistant</div>
+      <button class="sidebar-btn" onclick="showSection('connection')">
+        <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg>
+        Connection
+      </button>
+      <button class="sidebar-btn" onclick="showSection('calendars')">
+        <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg>
+        Calendars
+      </button>
+      <button class="sidebar-btn" onclick="showSection('entities')">
+        <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z"/></svg>
+        HA Entities
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">System</div>
+      <button class="sidebar-btn" onclick="showSection('settings')">
+        <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Settings
+      </button>
+      <button class="sidebar-btn" onclick="showSection('appearance')">
+        <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402M6.75 21A3.75 3.75 0 013 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 003.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008z"/></svg>
+        Appearance
+      </button>
+      <button class="sidebar-btn" onclick="showSection('photoframe')">
+        <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>
+        Photo Frame
+      </button>
+      <button class="sidebar-btn" onclick="showSection('reset')">
+        <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+        Reset Chores
+      </button>
+    </div>
+    <div style="padding:16px 12px 12px;border-top:1px solid var(--border);margin-top:auto;">
+      <div style="font-size:10px;color:var(--faint);text-align:center;letter-spacing:.3px;">
+        Family Panel <span id="app-version" style="color:var(--muted);"></span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main id="main">
+
+    <!-- ══════════════ USERS ══════════════ -->
+    <div id="section-users" class="section active">
+      <div class="page-title">Family Members</div>
+      <div class="page-sub">Add, edit or remove people. The dashboard chores chart updates automatically.</div>
+
+      <div id="user-grid"></div>
+
+      <button class="btn btn-primary" onclick="openUserModal()">
+        <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+        Add Family Member
+      </button>
+    </div>
+
+    <!-- ══════════════ CHORES ══════════════ -->
+    <div id="section-chores" class="section">
+      <div class="page-title">Chores</div>
+      <div class="page-sub">Manage tasks for each family member. Daily chores reset at set times; weekly chores appear on chosen days; monthly chores appear in chosen weeks of the month.</div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">All Chores</div>
+            <div class="panel-sub" id="chore-count-label"></div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openChoreModal()">
+            <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+            Add Chore
+          </button>
+        </div>
+        <div style="padding:0 20px;" id="chore-table-wrap">
+          <div id="chore-list"></div>
+        </div>
+      </div>
+
+      <!-- Schedule Overview -->
+      <div class="panel" style="margin-top:16px;">
+        <div class="panel-header">
+          <div class="panel-title">Schedule Overview</div>
+          <div style="font-size:11px;color:var(--muted);">Which chores appear on which days this week</div>
+        </div>
+        <div id="chore-schedule-grid" style="padding:12px 16px;overflow-x:auto;"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ REMINDERS ══════════════ -->
+    <div id="section-reminders" class="section">
+      <div class="page-title">Reminders</div>
+      <div class="page-sub">Shared family reminders visible on the dashboard.</div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Active Reminders</div>
+          <button class="btn btn-primary btn-sm" onclick="openReminderModal()">
+            <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+            Add Reminder
+          </button>
+        </div>
+        <div style="padding:0 20px;" id="reminder-admin-list"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ CONNECTION ══════════════ -->
+    <div id="section-connection" class="section">
+      <div class="page-title">HA Connection</div>
+      <div class="page-sub">Configure your Home Assistant URL and long-lived access token. Changes are saved to <code style="font-size:11px;background:var(--surface2);padding:1px 5px;border-radius:4px;">config.json</code> and take effect after a server restart.</div>
+
+      <div class="panel">
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Home Assistant URL</div>
+            <div class="setting-desc">e.g. http://homeassistant.local:8123 or http://10.0.0.5:8123</div>
+          </div>
+          <div class="setting-control" style="min-width:260px;">
+            <input type="text" id="cfg-ha-url" placeholder="http://10.0.0.1:8123" style="width:100%;">
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Access Token</div>
+            <div class="setting-desc">Long-lived access token from HA → Profile → Security</div>
+          </div>
+          <div class="setting-control" style="min-width:260px;">
+            <input type="password" id="cfg-ha-token" placeholder="Leave blank to keep current token" style="width:100%;">
+          </div>
+        </div>
+        <div class="setting-row" style="border:none;padding-bottom:20px;gap:12px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="saveConnection()">Save Connection</button>
+          <button class="btn btn-secondary" onclick="testConnection()" id="test-conn-btn">Test Connection</button>
+          <div id="conn-result" style="font-size:12px;margin-left:4px;"></div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:16px;">
+        <div class="panel-header">
+          <div class="panel-title">Current Status</div>
+        </div>
+        <div style="padding:16px 20px;" id="conn-status-detail">
+          <div style="font-size:12px;color:var(--muted);">Click "Test Connection" to check HA connectivity.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ CALENDARS ══════════════ -->
+    <div id="section-calendars" class="section">
+      <div class="page-title">Calendars</div>
+      <div class="page-sub">Add, remove, or recolour the Outlook/M365 calendars pulled from Home Assistant. The entity ID comes from HA → Developer Tools → States, search for <code style="font-size:11px;background:var(--surface2);padding:1px 5px;border-radius:4px;">calendar.</code></div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Active Calendars</div>
+          <button class="btn btn-primary btn-sm" onclick="openCalendarModal()">
+            <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+            Add Calendar
+          </button>
+        </div>
+        <div id="calendars-list" style="padding:0 20px;"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ HA ENTITIES ══════════════ -->
+    <div id="section-entities" class="section">
+      <div class="page-title">HA Entities</div>
+      <div class="page-sub">Assign Home Assistant entity IDs to each dashboard slot. Find entity IDs in HA → Developer Tools → States. Leave a slot blank to hide that button or tile.</div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Top Menu</div>
+          <div style="font-size:11px;color:var(--muted);">3 quick-action buttons in the header bar</div>
+        </div>
+        <div id="topbar-slots"></div>
+      </div>
+
+      <div class="panel" style="margin-top:16px;">
+        <div class="panel-header">
+          <div class="panel-title">Controls</div>
+          <div style="font-size:11px;color:var(--muted);">6 buttons in the Controls card</div>
+        </div>
+        <div id="control-slots"></div>
+      </div>
+
+      <div class="panel" style="margin-top:16px;">
+        <div class="panel-header">
+          <div class="panel-title">Home</div>
+          <div style="font-size:11px;color:var(--muted);">4 sensor tiles in the Home card</div>
+        </div>
+        <div id="sensor-slots"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ EVENTS ══════════════ -->
+    <!-- ══════════════ SETTINGS ══════════════ -->
+    <div id="section-settings" class="section">
+      <div class="page-title">Settings</div>
+      <div class="page-sub">Configuration for the family panel.</div>
+
+      <div class="panel">
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Admin Password</div>
+            <div class="setting-desc">Set a password to protect this admin portal. Stored as a SHA-256 hash. Leave blank to keep current password.</div>
+          </div>
+          <div class="setting-control">
+            <input type="password" id="cfg-password" placeholder="Enter new password">
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Shopping List — HA Entity</div>
+            <div class="setting-desc">A <code style="font-size:10px;background:var(--surface2);padding:1px 5px;border-radius:3px;">todo.*</code> entity from HA (e.g. <code style="font-size:10px;background:var(--surface2);padding:1px 5px;border-radius:3px;">todo.shopping_list</code>). A Shopping List button will appear in the top bar. Leave blank to hide it.</div>
+          </div>
+          <div class="setting-control">
+            <input type="text" id="cfg-todo-entity" placeholder="todo.shopping_list">
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Weather — HA Entity <span style="font-size:10px;color:var(--gold);font-weight:400;">(primary)</span></div>
+            <div class="setting-desc">A <code style="font-size:10px;background:var(--surface2);padding:1px 5px;border-radius:3px;">weather.*</code> entity from HA (e.g. <code style="font-size:10px;background:var(--surface2);padding:1px 5px;border-radius:3px;">weather.forecast_home</code>). If set, this is used instead of Open-Meteo.</div>
+          </div>
+          <div class="setting-control">
+            <input type="text" id="cfg-weather-entity" placeholder="weather.forecast_home">
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Weather — Location <span style="font-size:10px;color:var(--muted);font-weight:400;">(fallback)</span></div>
+            <div class="setting-desc">City name used for Open-Meteo if no HA entity is set above</div>
+          </div>
+          <div class="setting-control">
+            <input type="text" id="cfg-weather" placeholder="Hamilton, NZ">
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Chore Log Retention</div>
+            <div class="setting-desc">How many days of chore completion history to keep (shown in the log view on the dashboard)</div>
+          </div>
+          <div class="setting-control">
+            <input type="number" id="cfg-log-days" min="1" max="90" step="1" placeholder="10">
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Poll Interval</div>
+            <div class="setting-desc">How often the dashboard re-fetches data (seconds)</div>
+          </div>
+          <div class="setting-control">
+            <input type="number" id="cfg-poll" min="5" max="300" step="5">
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Calendar Deduplication</div>
+            <div class="setting-desc">Hide duplicate events that appear in multiple calendars (e.g. shared invites showing in both Bob &amp; Laura's calendars)</div>
+          </div>
+          <div class="setting-control">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="cfg-dedup" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer;">
+              <span style="font-size:12px;color:var(--muted)" id="cfg-dedup-label">Enabled</span>
+            </label>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Expand All-Day Events in Day View</div>
+            <div class="setting-desc">Show all-day and multi-day events as a full-height block across all 24 hours in the day view. When off, they only appear as a banner at the top.</div>
+          </div>
+          <div class="setting-control">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="cfg-allday-expand" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer;">
+              <span style="font-size:12px;color:var(--muted)" id="cfg-allday-expand-label">Enabled</span>
+            </label>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Time Format</div>
+            <div class="setting-desc">Choose 12-hour (e.g. 2:30 pm) or 24-hour (e.g. 14:30) for the clock and calendar times.</div>
+          </div>
+          <div class="setting-control">
+            <select id="cfg-time-format" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r8);color:var(--text);font-size:12px;padding:5px 10px;cursor:pointer;outline:none;">
+              <option value="24">24-hour</option>
+              <option value="12">12-hour</option>
+            </select>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">First Day of Week</div>
+            <div class="setting-desc">Controls which day the calendar week starts on.</div>
+          </div>
+          <div class="setting-control">
+            <select id="cfg-week-start" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r8);color:var(--text);font-size:12px;padding:5px 10px;cursor:pointer;outline:none;">
+              <option value="0">Sunday</option>
+              <option value="1">Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4">Thursday</option>
+              <option value="5">Friday</option>
+              <option value="6">Saturday</option>
+            </select>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Show Week Numbers</div>
+            <div class="setting-desc">Display the ISO week number in the bottom-left corner of the first day of each week on the calendar.</div>
+          </div>
+          <div class="setting-control">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="cfg-show-week-num" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer;">
+              <span style="font-size:12px;color:var(--muted)" id="cfg-show-week-num-label">Enabled</span>
+            </label>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Show Moon Phases</div>
+            <div class="setting-desc">Show the moon phase emoji on the calendar for new moon, first quarter, full moon, and last quarter — one day per phase.</div>
+          </div>
+          <div class="setting-control">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="cfg-show-moon" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer;">
+              <span style="font-size:12px;color:var(--muted)" id="cfg-show-moon-label">Enabled</span>
+            </label>
+          </div>
+        </div>
+        <div class="setting-row" style="padding:16px 20px;border:none;">
+          <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+        </div>
+      </div>
+
+      <!-- IP Allowlist -->
+      <div class="panel" style="margin-top:16px;">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">IP Allowlist</div>
+            <div class="panel-sub">Only devices on this list can load the dashboard. Leave empty to allow all LAN devices. Localhost (127.0.0.1) is always allowed regardless.</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openAddIPModal()">
+            <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+            Add IP
+          </button>
+        </div>
+        <div id="ip-list" style="padding:0 20px;min-height:40px;"></div>
+        <div style="padding:10px 20px 16px;border-top:1px solid var(--border);margin-top:4px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" onclick="addMyIP()">+ Add my current IP</button>
+          <span style="font-size:11px;color:var(--muted)">Your IP: <code id="my-ip-display" style="background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:11px;">detecting…</code></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ APPEARANCE ══════════════ -->
+    <div id="section-appearance" class="section">
+      <div class="page-title">Appearance</div>
+      <div class="page-sub">Choose colour presets for dark and light mode. Changes apply live to both the dashboard and admin pages.</div>
+
+      <div class="panel" style="margin-top:16px;">
+        <div class="panel-header">Dark Mode Preset</div>
+        <div id="dark-preset-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;padding:16px;"></div>
+      </div>
+
+      <div class="panel" style="margin-top:16px;">
+        <div class="panel-header">Light Mode Preset</div>
+        <div id="light-preset-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;padding:16px;"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ PHOTO FRAME ══════════════ -->
+    <div id="section-photoframe" class="section">
+      <div class="page-title">Photo Frame</div>
+      <div class="page-sub">When idle, the dashboard becomes a fullscreen photo slideshow powered by Immich.</div>
+
+      <div class="panel">
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Immich URL</div>
+            <div class="setting-desc">Base URL of your Immich server, e.g. http://192.168.1.10:2283</div>
+          </div>
+          <div class="setting-control" style="min-width:230px;">
+            <input type="text" id="cfg-immich-url" placeholder="http://192.168.1.10:2283" style="width:100%;">
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">API Key</div>
+            <div class="setting-desc">Immich → Account Settings → API Keys → New API Key<br>
+            Required scopes: <code style="font-size:10px;background:var(--surface2);padding:1px 5px;border-radius:3px;">asset:read</code> <code style="font-size:10px;background:var(--surface2);padding:1px 5px;border-radius:3px;">asset.view</code> <code style="font-size:10px;background:var(--surface2);padding:1px 5px;border-radius:3px;">album:read</code> <code style="font-size:10px;background:var(--surface2);padding:1px 5px;border-radius:3px;">user.read</code></div>
+          </div>
+          <div class="setting-control" style="min-width:230px;">
+            <input type="password" id="cfg-immich-key" placeholder="Paste API key" style="width:100%;" autocomplete="off">
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Album</div>
+            <div class="setting-desc">The album to show — e.g. your Favourites album</div>
+          </div>
+          <div class="setting-control" style="min-width:230px;display:flex;gap:8px;align-items:center;">
+            <select id="cfg-immich-album" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:12px;font-family:inherit;">
+              <option value="">— load albums first —</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" onclick="loadImmichAlbums()" id="load-albums-btn">Load</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Idle timeout</div>
+            <div class="setting-desc">Minutes of inactivity before slideshow starts (0 = disabled)</div>
+          </div>
+          <div class="setting-control">
+            <input type="number" id="cfg-frame-idle" min="0" max="60" step="1" value="5" style="width:80px;">
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Seconds per photo</div>
+            <div class="setting-desc">How long each photo is shown</div>
+          </div>
+          <div class="setting-control">
+            <input type="number" id="cfg-frame-interval" min="5" max="120" step="5" value="20" style="width:80px;">
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Tap zones</div>
+            <div class="setting-desc">Left ¼ = previous photo, right ¼ = next photo, middle ½ = exit. When off, tap anywhere exits.</div>
+          </div>
+          <div class="setting-control">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="cfg-frame-tapzones" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer;">
+              <span style="font-size:12px;color:var(--muted)" id="cfg-frame-tapzones-label">Enabled</span>
+            </label>
+          </div>
+        </div>
+        <div class="setting-row" style="border:none;padding-bottom:20px;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="savePhotoFrameSettings()">Save</button>
+          <button class="btn btn-secondary" onclick="testImmich()" id="test-immich-btn">Test Connection</button>
+          <span id="immich-test-result" style="font-size:12px;"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ RESET ══════════════ -->
+    <div id="section-reset" class="section">
+      <div class="page-title">Reset Chores</div>
+      <div class="page-sub">Manually reset chore completion status. The dashboard auto-resets based on recurrence.</div>
+
+      <div class="panel">
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Reset All Daily Chores</div>
+            <div class="setting-desc">Mark all daily chores as incomplete</div>
+          </div>
+          <button class="btn btn-secondary" onclick="resetByRecur('daily')">Reset Daily</button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Reset All Weekly Chores</div>
+            <div class="setting-desc">Mark all weekly chores as incomplete</div>
+          </div>
+          <button class="btn btn-secondary" onclick="resetByRecur('weekly')">Reset Weekly</button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Reset All Monthly Chores</div>
+            <div class="setting-desc">Mark all monthly chores as incomplete</div>
+          </div>
+          <button class="btn btn-secondary" onclick="resetByRecur('monthly')">Reset Monthly</button>
+        </div>
+        <div class="setting-row" style="border:none;">
+          <div class="setting-info">
+            <div class="setting-name" style="color:var(--red)">Reset Everything</div>
+            <div class="setting-desc">Mark ALL chores as incomplete, regardless of recurrence</div>
+          </div>
+          <button class="btn btn-danger" onclick="resetAll()">Reset All</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- USER MODAL -->
+<div class="modal-overlay" id="user-modal">
+  <div class="modal">
+    <h3 id="user-modal-title">Add Family Member</h3>
+
+    <div class="form-group" style="margin-bottom:12px;">
+      <label class="form-label">Name</label>
+      <input type="text" id="um-name" placeholder="e.g. Charlie">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Colour</label>
+        <input type="color" id="um-color" value="#a78bfa">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Age (optional)</label>
+        <input type="number" id="um-age" placeholder="Leave blank for adult" min="0" max="120">
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:12px;">
+      <label class="form-label">Emoji / Avatar</label>
+      <div class="emoji-grid" id="emoji-picker">
+        👩 👨 👴 👵 🧒 👦 👧 🧑 👶 🧔 👩‍🦰 👨‍🦰 👩‍🦱 👨‍🦱 🐶 🐱 🐸 🦊 🐻 🐼
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:12px;">
+      <label class="form-label">Custom emoji (optional)</label>
+      <input type="text" id="um-emoji-custom" placeholder="Type or paste any emoji">
+    </div>
+
+    <div class="form-group" style="margin-bottom:12px;">
+      <label class="form-label">Photo <span style="font-weight:400;color:var(--faint)">(optional — overrides emoji)</span></label>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div id="um-photo-preview" style="width:48px;height:48px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--muted);">📷</div>
+        <div style="flex:1;">
+          <input type="file" id="um-photo-file" accept="image/*" style="display:none;" onchange="handlePhotoUpload(this)">
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('um-photo-file').click()">Upload photo</button>
+          <button class="btn btn-secondary btn-sm" id="um-photo-clear" onclick="clearUserPhoto()" style="display:none;margin-left:6px;">Remove</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:0;margin-top:12px;">
+      <label class="form-label">HA Person Entity <span style="font-weight:400;color:var(--faint)">(optional — for live presence)</span></label>
+      <input type="text" id="um-ha-entity" placeholder="e.g. person.laura">
+    </div>
+
+    <div class="form-group" style="margin-bottom:0;margin-top:12px;">
+      <label class="form-label">Notification Entity <span style="font-weight:400;color:var(--faint)">(optional — for chore alerts)</span></label>
+      <input type="text" id="um-notify-entity" placeholder="e.g. notify.mobile_app_lauras_phone">
+      <div style="margin-top:5px;font-size:11px;color:var(--faint);">Used to send a push notification when a chore assigned to this person is completed.</div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('user-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveUser()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- REMINDER MODAL -->
+<div class="modal-overlay" id="reminder-modal">
+  <div class="modal">
+    <h3>Add Reminder</h3>
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">Reminder text</label>
+      <input type="text" id="rm-text" placeholder="e.g. Book school interviews">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('reminder-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveReminder()">Add Reminder</button>
+    </div>
+  </div>
+</div>
+
+<!-- CALENDAR MODAL -->
+<div class="modal-overlay" id="calendar-modal">
+  <div class="modal">
+    <h3 id="cal-modal-title">Add Calendar</h3>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label class="form-label">Display Name</label>
+      <input type="text" id="cm-name" placeholder="e.g. Laura">
+    </div>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label class="form-label">HA Entity ID</label>
+      <input type="text" id="cm-entity" placeholder="e.g. calendar.m365calendar_name">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Colour</label>
+        <input type="color" id="cm-color" value="#a78bfa">
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" id="cm-no-expand" style="width:15px;height:15px;accent-color:var(--gold);cursor:pointer;flex-shrink:0;">
+        <span style="font-size:12px;color:var(--muted);line-height:1.3;">Disable all-day expand for this calendar<br><span style="font-size:10px;opacity:.7;">All-day events from this calendar will only show as a banner at the top of the day view, regardless of the global setting.</span></span>
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('calendar-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCalendarEntry()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ENTITY MODAL -->
+<div class="modal-overlay" id="slot-modal">
+  <div class="modal" style="width:440px;">
+    <h3 id="slot-modal-title">Edit Slot</h3>
+
+    <!-- Button fields (topbar + controls) -->
+    <div id="slot-btn-fields">
+      <div class="form-group">
+        <label class="form-label">Display Label</label>
+        <input type="text" id="sm-label" placeholder="e.g. Front Door">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Icon</label>
+        <div id="sm-icon-picker" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;"></div>
+        <input type="hidden" id="sm-icon">
+      </div>
+      <div class="form-group">
+        <label class="form-label">HA Entity ID</label>
+        <input type="text" id="sm-entity" placeholder="e.g. lock.front_door" oninput="onSlotEntityInput(this.value)">
+        <div id="sm-entity-hint" style="margin-top:5px;font-size:11px;min-height:16px;"></div>
+      </div>
+      <div id="sm-svc-row" style="display:none;">
+        <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">
+          Services &nbsp;<span id="sm-svc-note" style="font-weight:400;color:var(--faint);text-transform:none;letter-spacing:0;font-size:10px;"></span>
+        </div>
+        <div class="modal-row">
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">ON</label>
+            <input type="text" id="sm-on-svc" placeholder="e.g. turn_on">
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">OFF</label>
+            <input type="text" id="sm-off-svc" placeholder="e.g. turn_off">
+          </div>
+        </div>
+      </div>
+      <input type="hidden" id="sm-domain">
+      <div style="padding:8px 10px;background:var(--surface2);border-radius:6px;font-size:11px;color:var(--faint);line-height:1.5;">
+        Leave Entity ID blank to hide this button from the dashboard.
+      </div>
+    </div>
+
+    <!-- Sensor fields -->
+    <div id="slot-sensor-fields" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">Display Label</label>
+        <input type="text" id="sm-sensor-label" placeholder="e.g. Inside temp">
+      </div>
+      <div class="form-group">
+        <label class="form-label">HA Entity ID</label>
+        <input type="text" id="sm-sensor-entity" placeholder="e.g. sensor.bedroom_temperature">
+        <div style="margin-top:5px;font-size:11px;color:var(--faint);">Leave blank to hide this tile from the dashboard.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Sensor Type</label>
+        <select id="sm-sensor-type" onchange="onSensorTypeChange()">
+          <option value="temperature">Temperature — shows °C, warns above 26°</option>
+          <option value="humidity">Humidity — shows %, warns above 70%</option>
+          <option value="door">Door / Window — on = Open (red), off = Closed (green)</option>
+          <option value="alarm">Alarm panel — disarmed / armed / triggered states</option>
+          <option value="generic">Generic — shows raw state value</option>
+        </select>
+      </div>
+      <!-- Alarm-only options -->
+      <div id="sm-alarm-opts" style="display:none;">
+        <div class="setting-row" style="padding:10px 0;border:none;">
+          <div class="setting-info">
+            <div class="setting-name" style="font-size:12px;">Require PIN to arm / disarm</div>
+            <div class="setting-desc">Shows a PIN entry field in the alarm panel on the dashboard</div>
+          </div>
+          <div class="setting-control">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="sm-alarm-pin" onchange="_syncAlarmPinLabel()" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer;">
+              <span style="font-size:12px;color:var(--muted);" id="sm-alarm-pin-label">Off</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('slot-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSlot()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHORE MODAL -->
+<div class="modal-overlay" id="chore-modal">
+  <div class="modal" style="width:500px;max-width:96vw;">
+    <h3 id="chore-modal-title">Add Chore</h3>
+
+    <div class="form-group">
+      <label class="form-label">Task name</label>
+      <input type="text" id="cm-label" placeholder="e.g. 🦷 Brush teeth">
+    </div>
+
+    <!-- Person picker (avatar row) -->
+    <div class="form-group">
+      <label class="form-label">Assigned to</label>
+      <div id="cm-person-picker" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;"></div>
+      <input type="hidden" id="cm-person">
+    </div>
+
+    <div class="modal-row">
+      <div class="form-group" style="flex:1;">
+        <label class="form-label">Recurrence</label>
+        <select id="cm-recur" onchange="onChoreRecurChange()">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+          <option value="yearly">Yearly</option>
+          <option value="once">One-off</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Daily: reset times -->
+    <div id="cm-daily-opts">
+      <label class="form-label">Reset times <span style="font-weight:400;color:var(--faint);">(chore resets and reappears at each time)</span></label>
+      <div id="cm-reset-times" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;"></div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input type="time" id="cm-new-time" style="background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:12px;padding:5px 8px;font-family:inherit;outline:none;">
+        <button class="btn btn-secondary btn-sm" onclick="addResetTime()">+ Add time</button>
+      </div>
+    </div>
+
+    <!-- Weekly: day picker + show time -->
+    <div id="cm-weekly-opts" style="display:none;">
+      <label class="form-label">Show on days <span style="font-weight:400;color:var(--faint);">(leave all deselected to show every day)</span></label>
+      <div id="cm-day-picker" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;margin-bottom:10px;"></div>
+      <div class="modal-row" style="align-items:center;gap:10px;">
+        <div class="form-group" style="flex:1;margin-bottom:0;">
+          <label class="form-label">Appears from time <span style="font-weight:400;color:var(--faint);">(optional)</span></label>
+          <input type="time" id="cm-show-time" style="background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:12px;padding:5px 8px;font-family:inherit;outline:none;width:100%;">
+        </div>
+        <div style="margin-top:18px;">
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('cm-show-time').value=''">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Monthly: week picker + month picker -->
+    <div id="cm-monthly-opts" style="display:none;">
+      <label class="form-label">Show in weeks of month <span style="font-weight:400;color:var(--faint);">(leave all deselected to show all month)</span></label>
+      <div id="cm-week-picker" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;margin-bottom:10px;"></div>
+      <label class="form-label">Show in months <span style="font-weight:400;color:var(--faint);">(leave all deselected for every month)</span></label>
+      <div id="cm-month-picker" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;"></div>
+    </div>
+
+    <!-- Yearly: month picker -->
+    <div id="cm-yearly-opts" style="display:none;">
+      <label class="form-label">Show in months <span style="font-weight:400;color:var(--faint);">(leave all deselected for every month)</span></label>
+      <div id="cm-month-picker-yr" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;"></div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:18px;">
+      <!-- Notify toggle sits above actions, full width -->
+      <div id="cm-notify-row" style="display:none;width:100%;margin-bottom:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;gap:10px;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px;">Push Notifications</div>
+        <!-- On completion -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;font-weight:600;color:var(--text);">On completion</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:1px;">Notify when this chore is marked done</div>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex-shrink:0;">
+            <input type="checkbox" id="cm-notify" onchange="document.getElementById('cm-notify-label').textContent=this.checked?'On':'Off'" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer;">
+            <span style="font-size:12px;color:var(--muted);" id="cm-notify-label">Off</span>
+          </label>
+        </div>
+        <!-- On assignment / becoming active -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;font-weight:600;color:var(--text);">When chore becomes active</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:1px;" id="cm-notify-desc">Notify when this chore resets and appears in the list</div>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex-shrink:0;">
+            <input type="checkbox" id="cm-notify-assign" onchange="document.getElementById('cm-notify-assign-label').textContent=this.checked?'On':'Off'" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer;">
+            <span style="font-size:12px;color:var(--muted);" id="cm-notify-assign-label">Off</span>
+          </label>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;width:100%;">
+        <button class="btn btn-secondary" style="flex:1;" onclick="closeModal('chore-modal')">Cancel</button>
+        <button class="btn btn-secondary" id="cm-clone-btn" onclick="cloneChore()" style="display:none;flex:1;">Clone</button>
+        <button class="btn btn-primary" style="flex:1;" onclick="saveChoreModal()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD IP MODAL -->
+<div class="modal-overlay" id="ip-modal">
+  <div class="modal">
+    <h3>Add IP Address</h3>
+    <div class="form-group" style="margin-bottom:4px;">
+      <label class="form-label">IP Address</label>
+      <input type="text" id="ip-input" placeholder="e.g. 192.168.1.50" onkeydown="if(event.key==='Enter')saveIP()">
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;">Enter the static IP of the device you want to allow (tablet, phone, etc.)</div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('ip-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveIP()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════════════════════
+const API = '/api/data';
+let D = null;
+
+async function fetchData() {
+  const r = await fetch(API);
+  if (!r.ok) throw new Error('Cannot load data');
+  return r.json();
+}
+
+async function pushData() {
+  setSaveStatus('saving');
+  try {
+    const r = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(D, null, 2),
+    });
+    if (!r.ok) throw new Error('Save failed');
+    setSaveStatus('saved');
+  } catch (e) {
+    setSaveStatus('error');
+    toast('Save failed: ' + e.message, 'err');
+    throw e;
+  }
+}
+
+function setSaveStatus(s) {
+  const el = document.getElementById('save-status');
+  el.className = s;
+  el.textContent = s === 'saving' ? '↑ Saving…' : s === 'saved' ? '✓ Saved' : '✗ Error';
+  if (s === 'saved') setTimeout(() => { el.className = ''; el.textContent = '● All saved'; }, 2500);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════════════
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('section-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  renderSection(id);
+}
+
+function renderSection(id) {
+  if (id === 'users')      renderUsers();
+  if (id === 'chores')     renderChores();
+  if (id === 'reminders')  renderReminders();
+  if (id === 'settings')   renderSettings();
+  if (id === 'connection') renderConnection();
+  if (id === 'calendars')  renderCalendars();
+  if (id === 'entities')   renderEntities();
+  if (id === 'appearance') renderAppearance();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+function hexToRgba(hex, a) {
+  hex = hex.replace('#','');
+  if (hex.length === 3) hex = hex.split('').map(c => c+c).join('');
+  const r = parseInt(hex.slice(0,2),16), g = parseInt(hex.slice(2,4),16), b = parseInt(hex.slice(4,6),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function toast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + type;
+  setTimeout(() => t.className = '', 3000);
+}
+
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.modal-overlay').forEach(o =>
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); })
+);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.modal-overlay').forEach(o => o.classList.remove('open'));
+});
+
+// ═══════════════════════════════════════════════════════════
+//  USERS
+// ═══════════════════════════════════════════════════════════
+let editingUserId  = null;
+let selectedEmoji  = '👤';
+let _userPhotoData = null;  // base64 data URL for current user photo
+
+const PRESET_EMOJIS = ['👩','👨','👴','👵','🧒','👦','👧','🧑','👶','🧔','👩‍🦰','👨‍🦰','🐶','🐱','🐸','🦊','🐻','🐼'];
+
+function renderUsers() {
+  const grid = document.getElementById('user-grid');
+  grid.innerHTML = '';
+  (D.users || []).forEach(u => {
+    const bg = hexToRgba(u.color, 0.12);
+    const card = document.createElement('div');
+    card.className = 'user-card';
+    card.innerHTML = `
+      <div class="user-card-top">
+        <div class="user-big-avatar" style="background:${u.photo ? 'transparent' : bg};${u.photo ? 'padding:0;overflow:hidden;' : ''}">${u.photo ? `<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (u.emoji || u.name[0])}</div>
+        <div class="user-card-name">${u.name}</div>
+        <div class="user-card-meta" style="color:${u.color}">
+          ${u.isAdult === false || (u.age && u.age < 18) ? `Age ${u.age || '?'} · Kid` : 'Adult'}
+        </div>
+        <div class="user-card-meta">
+          <span class="color-swatch" style="background:${u.color};vertical-align:middle;margin-right:4px;"></span>${u.color}
+        </div>
+      </div>
+      <div class="user-card-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openUserModal('${u.id}')">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">Remove</button>
+      </div>`;
+    grid.appendChild(card);
+  });
+  if (!D.users?.length) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">👪</div><p>No family members yet.<br>Add your first one below!</p></div>';
+  }
+}
+
+function openUserModal(userId) {
+  editingUserId = userId || null;
+  const u = userId ? D.users.find(x => x.id === userId) : null;
+  document.getElementById('user-modal-title').textContent = u ? `Edit ${u.name}` : 'Add Family Member';
+  document.getElementById('um-name').value     = u?.name     || '';
+  document.getElementById('um-color').value    = u?.color    || '#a78bfa';
+  document.getElementById('um-age').value      = u?.age      || '';
+  document.getElementById('um-ha-entity').value = u?.haEntity || '';
+  document.getElementById('um-notify-entity').value = u?.notifyEntity || '';
+  selectedEmoji = u?.emoji || '👤';
+  document.getElementById('um-emoji-custom').value = '';
+
+  // Photo preview
+  _userPhotoData = u?.photo || null;
+  const prev = document.getElementById('um-photo-preview');
+  const clrBtn = document.getElementById('um-photo-clear');
+  if (_userPhotoData) {
+    prev.innerHTML = `<img src="${_userPhotoData}" style="width:100%;height:100%;object-fit:cover;">`;
+    clrBtn.style.display = '';
+  } else {
+    prev.innerHTML = '📷';
+    prev.style.fontSize = '22px';
+    clrBtn.style.display = 'none';
+  }
+
+  // Build emoji picker
+  const picker = document.getElementById('emoji-picker');
+  picker.innerHTML = '';
+  PRESET_EMOJIS.forEach(em => {
+    const el = document.createElement('div');
+    el.className = 'emoji-opt' + (em === selectedEmoji ? ' selected' : '');
+    el.textContent = em;
+    el.onclick = () => {
+      selectedEmoji = em;
+      picker.querySelectorAll('.emoji-opt').forEach(x => x.classList.remove('selected'));
+      el.classList.add('selected');
+      document.getElementById('um-emoji-custom').value = '';
+    };
+    picker.appendChild(el);
+  });
+
+  openModal('user-modal');
+  setTimeout(() => document.getElementById('um-name').focus(), 50);
+}
+
+async function saveUser() {
+  const name = document.getElementById('um-name').value.trim();
+  if (!name) { toast('Name is required', 'err'); return; }
+
+  const customEmoji = document.getElementById('um-emoji-custom').value.trim();
+  const emoji    = customEmoji || selectedEmoji;
+  const age      = parseInt(document.getElementById('um-age').value) || null;
+  const color    = document.getElementById('um-color').value;
+  const haEntity     = document.getElementById('um-ha-entity').value.trim() || null;
+  const notifyEntity = document.getElementById('um-notify-entity').value.trim() || null;
+
+  if (editingUserId) {
+    const u = D.users.find(x => x.id === editingUserId);
+    if (u) { u.name = name; u.color = color; u.emoji = emoji; u.age = age; u.isAdult = !age || age >= 18; u.haEntity = haEntity; u.notifyEntity = notifyEntity; u.photo = _userPhotoData || null; }
+  } else {
+    D.users = D.users || [];
+    const id = name.toLowerCase().replace(/\s+/g, '_') + '_' + uid().slice(0,4);
+    D.users.push({ id, name, color, emoji, age, isAdult: !age || age >= 18, home: true, haEntity, notifyEntity, photo: _userPhotoData || null });
+  }
+
+  await pushData();
+  closeModal('user-modal');
+  renderUsers();
+  toast(editingUserId ? 'Member updated' : `${name} added!`);
+  // Person picker in chore modal re-renders on open, nothing needed here
+}
+
+function handlePhotoUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  // Resize to max 200px before storing to keep data.json small
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 200;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.width  * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      _userPhotoData = canvas.toDataURL('image/jpeg', 0.82);
+      const prev = document.getElementById('um-photo-preview');
+      prev.innerHTML = `<img src="${_userPhotoData}" style="width:100%;height:100%;object-fit:cover;">`;
+      document.getElementById('um-photo-clear').style.display = '';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  input.value = ''; // reset so same file can be re-uploaded
+}
+
+function clearUserPhoto() {
+  _userPhotoData = null;
+  const prev = document.getElementById('um-photo-preview');
+  prev.innerHTML = '📷';
+  document.getElementById('um-photo-clear').style.display = 'none';
+}
+
+async function deleteUser(userId) {
+  const u = D.users.find(x => x.id === userId);
+  if (!u) return;
+  if (!confirm(`Remove ${u.name}? Their chores will also be deleted.`)) return;
+  D.users = D.users.filter(x => x.id !== userId);
+  D.chores = (D.chores || []).filter(c => c.userId !== userId);
+  await pushData();
+  renderUsers();
+  toast(`${u.name} removed`);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CHORES
+// ═══════════════════════════════════════════════════════════
+const DOW_LABELS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const WEEK_LABELS  = ['Week 1','Week 2','Week 3','Week 4'];
+const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+let _editingChoreId = null;
+
+function renderChores() {
+  const list   = document.getElementById('chore-list');
+  const chores = D.chores || [];
+  const users  = D.users  || [];
+  document.getElementById('chore-count-label').textContent =
+    `${chores.length} task${chores.length !== 1 ? 's' : ''} total`;
+
+  list.innerHTML = '';
+  if (!chores.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>No chores yet. Click Add Chore to get started.</p></div>';
+    renderChoreSchedule();
+    return;
+  }
+
+  chores.forEach(ch => {
+    const user  = users.find(u => u.id === ch.userId);
+    const color = user?.color || '#999';
+    const bg    = hexToRgba(color, 0.1);
+    const row   = document.createElement('div');
+    row.className = 'chore-list-row';
+
+    let schedHint = '';
+    if (ch.recur === 'daily') {
+      const times = ch.resetTimes?.length ? ch.resetTimes.join(', ') : '00:00';
+      schedHint = `Resets at ${times}`;
+    } else if (ch.recur === 'weekly') {
+      const days  = ch.days?.length ? ch.days.map(d => DOW_LABELS[d]).join(', ') : 'every day';
+      const showT = ch.showTime ? ` from ${ch.showTime}` : '';
+      schedHint = `On: ${days}${showT}`;
+    } else if (ch.recur === 'monthly') {
+      const weeks  = ch.weekOfMonth?.length ? ch.weekOfMonth.map(w => `Wk ${w}`).join(', ') : 'all month';
+      const months = ch.months?.length ? ch.months.map(m => MONTH_LABELS[m-1]).join(', ') : 'every month';
+      schedHint = `${weeks} · ${months}`;
+    } else if (ch.recur === 'yearly') {
+      const months = ch.months?.length ? ch.months.map(m => MONTH_LABELS[m-1]).join(', ') : 'every month';
+      schedHint = `Yearly: ${months}`;
+    }
+
+    const lastDone = ch.doneDate ? `Last: ${ch.doneDate}` : '';
+
+    row.innerHTML = `
+      <span class="chore-person-chip" style="background:${bg};color:${color}">
+        ${user?.emoji || ''} ${user?.name || ch.userId}
+      </span>
+      <span class="chore-list-label" style="flex:1;">${ch.label}</span>
+      <span class="badge badge-${ch.recur}">${ch.recur}</span>
+      ${schedHint ? `<span style="font-size:10px;color:var(--faint);white-space:nowrap;">${schedHint}</span>` : ''}
+      ${lastDone   ? `<span style="font-size:10px;color:var(--green);white-space:nowrap;">${lastDone}</span>` : ''}
+      <span style="font-size:11px;color:${ch.done ? 'var(--green)' : 'var(--faint)'};">${ch.done ? '✓ Done' : '○ Open'}</span>
+      <button class="btn btn-secondary btn-xs" onclick="openChoreModal('${ch.id}')">Edit</button>
+      <button class="btn btn-danger btn-xs" onclick="deleteChore('${ch.id}')">✕</button>`;
+    list.appendChild(row);
+  });
+
+  renderChoreSchedule();
+}
+
+function renderChoreSchedule() {
+  const wrap   = document.getElementById('chore-schedule-grid');
+  const chores = D.chores || [];
+  const users  = D.users  || [];
+  if (!chores.length) { wrap.innerHTML = '<div style="font-size:12px;color:var(--faint);padding:8px;">No chores configured yet.</div>'; return; }
+
+  const now      = new Date();
+  const todayDow = now.getDay();
+
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - todayDow + i);
+    days.push(d);
+  }
+
+  function choreVisibleOnDay(ch, d) {
+    const dow = d.getDay();
+    const wom = Math.ceil(d.getDate() / 7);
+    const mon = d.getMonth() + 1;
+    if (ch.recur === 'daily')   return true;
+    if (ch.recur === 'weekly')  return !ch.days?.length || ch.days.includes(dow);
+    if (ch.recur === 'monthly') {
+      const weekOk  = !ch.weekOfMonth?.length || ch.weekOfMonth.includes(wom);
+      const monthOk = !ch.months?.length      || ch.months.includes(mon);
+      return weekOk && monthOk;
+    }
+    return false;
+  }
+
+  const html = [`<div class="sched-grid" style="grid-template-columns:130px repeat(7,1fr);">`];
+  html.push(`<div class="sched-hdr" style="text-align:left;padding-left:10px;">Chore</div>`);
+  days.forEach(d => {
+    const isToday = d.toDateString() === now.toDateString();
+    html.push(`<div class="sched-hdr${isToday ? ' today' : ''}">${DOW_LABELS[d.getDay()]}<br><span style="font-size:9px;opacity:.7;">${d.getDate()}</span></div>`);
+  });
+
+  chores.filter(ch => ch.recur !== 'once' && ch.recur !== 'yearly').forEach(ch => {
+    const user  = users.find(u => u.id === ch.userId);
+    const color = user?.color || '#888';
+    html.push(`<div class="sched-cell" style="padding-left:10px;font-size:10px;color:var(--text);font-weight:600;display:flex;align-items:center;gap:4px;">${user?.emoji||''} ${ch.label}</div>`);
+    days.forEach(d => {
+      const isToday = d.toDateString() === now.toDateString();
+      const visible = choreVisibleOnDay(ch, d);
+      html.push(`<div class="sched-cell${isToday ? ' today' : ''}" style="align-items:center;justify-content:center;">${visible ? `<div class="sched-chip" style="background:${hexToRgba(color,0.15)};color:${color};">✓</div>` : ''}</div>`);
+    });
+  });
+  html.push('</div>');
+  wrap.innerHTML = html.join('');
+}
+
+// ── Person avatar picker ──────────────────────────────────
+function _renderPersonPicker(selectedUserId) {
+  const wrap = document.getElementById('cm-person-picker');
+  wrap.innerHTML = '';
+  (D.users || []).forEach(u => {
+    const outer = document.createElement('div');
+    outer.className = 'person-avatar-wrap';
+    outer.onclick = () => _selectPerson(u.id);
+
+    const av = document.createElement('div');
+    av.className = 'person-avatar-pick' + (u.id === selectedUserId ? ' selected' : '');
+    av.id = `cpick-${u.id}`;
+    av.style.background = u.photo ? 'transparent' : hexToRgba(u.color || '#888', 0.2);
+    av.innerHTML = u.photo ? `<img src="${u.photo}">` : (u.emoji || u.name[0]);
+
+    const nm = document.createElement('div');
+    nm.className = 'person-avatar-pick-name';
+    nm.style.color = u.color || 'var(--muted)';
+    nm.textContent = u.name;
+
+    outer.appendChild(av); outer.appendChild(nm);
+    wrap.appendChild(outer);
+  });
+}
+
+function _selectPerson(userId) {
+  document.getElementById('cm-person').value = userId;
+  document.querySelectorAll('.person-avatar-pick').forEach(el => el.classList.remove('selected'));
+  const el = document.getElementById(`cpick-${userId}`);
+  if (el) el.classList.add('selected');
+  // Refresh notify row visibility when person changes
+  const cb = document.getElementById('cm-notify');
+  const cbA = document.getElementById('cm-notify-assign');
+  _updateChoreNotifyRow(userId, cb ? cb.checked : false, cbA ? cbA.checked : false);
+}
+
+function _updateChoreNotifyRow(userId, checked, checkedAssign) {
+  const user = (D.users || []).find(u => u.id === userId);
+  const row  = document.getElementById('cm-notify-row');
+  const cb        = document.getElementById('cm-notify');
+  const lbl       = document.getElementById('cm-notify-label');
+  const cbAssign  = document.getElementById('cm-notify-assign');
+  const lblAssign = document.getElementById('cm-notify-assign-label');
+  const desc      = document.getElementById('cm-notify-desc');
+  if (user?.notifyEntity) {
+    row.style.display = '';
+    cb.checked = !!checked;
+    lbl.textContent = checked ? 'On' : 'Off';
+    cbAssign.checked = !!checkedAssign;
+    lblAssign.textContent = checkedAssign ? 'On' : 'Off';
+    desc.textContent = `Via ${user.notifyEntity}`;
+  } else {
+    row.style.display = 'none';
+    cb.checked = false;
+    cbAssign.checked = false;
+  }
+}
+
+function openChoreModal(id) {
+  _editingChoreId = id || null;
+  const ch = id ? (D.chores || []).find(c => c.id === id) : null;
+
+  document.getElementById('chore-modal-title').textContent = ch ? 'Edit Chore' : 'Add Chore';
+  document.getElementById('cm-label').value = ch?.label || '';
+  document.getElementById('cm-recur').value = ch?.recur || 'daily';
+  document.getElementById('cm-clone-btn').style.display = ch ? '' : 'none';
+
+  const defaultUser = (D.users||[])[0]?.id || '';
+  const selectedUser = ch?.userId || defaultUser;
+  document.getElementById('cm-person').value = selectedUser;
+  _renderPersonPicker(selectedUser);
+
+  _renderResetTimes(ch?.resetTimes || ['00:00']);
+  _renderDayPicker(ch?.days || []);
+  document.getElementById('cm-show-time').value = ch?.showTime || '';
+  _renderWeekPicker(ch?.weekOfMonth || []);
+  _renderMonthPicker('cm-month-picker',    ch?.months || []);
+  _renderMonthPicker('cm-month-picker-yr', ch?.months || []);
+
+  // Notify checkbox — only show if the assigned user has a notifyEntity
+  _updateChoreNotifyRow(ch?.userId || (D.users||[])[0]?.id, ch?.notify || false, ch?.notifyAssign || false);
+
+  onChoreRecurChange();
+  openModal('chore-modal');
+  setTimeout(() => document.getElementById('cm-label').focus(), 60);
+}
+
+function onChoreRecurChange() {
+  const recur = document.getElementById('cm-recur').value;
+  document.getElementById('cm-daily-opts').style.display   = recur === 'daily'   ? '' : 'none';
+  document.getElementById('cm-weekly-opts').style.display  = recur === 'weekly'  ? '' : 'none';
+  document.getElementById('cm-monthly-opts').style.display = recur === 'monthly' ? '' : 'none';
+  document.getElementById('cm-yearly-opts').style.display  = recur === 'yearly'  ? '' : 'none';
+}
+
+function _renderResetTimes(times) {
+  const wrap = document.getElementById('cm-reset-times');
+  wrap.innerHTML = '';
+  (times.length ? times : ['00:00']).forEach(t => {
+    const chip = document.createElement('span');
+    chip.className = 'reset-time-chip';
+    chip.dataset.time = t;
+    chip.innerHTML = `${t} <button onclick="removeResetTime('${t}')" title="Remove">×</button>`;
+    wrap.appendChild(chip);
+  });
+}
+
+function addResetTime() {
+  const inp = document.getElementById('cm-new-time');
+  const val = inp.value;
+  if (!val) return;
+  const existing = _getResetTimes();
+  if (existing.includes(val)) return;
+  existing.push(val); existing.sort();
+  _renderResetTimes(existing);
+  inp.value = '';
+}
+
+function removeResetTime(t) {
+  const times = _getResetTimes().filter(x => x !== t);
+  _renderResetTimes(times.length ? times : ['00:00']);
+}
+
+function _getResetTimes() {
+  return [...document.getElementById('cm-reset-times').querySelectorAll('[data-time]')].map(el => el.dataset.time);
+}
+
+function _renderDayPicker(selectedDays) {
+  const wrap = document.getElementById('cm-day-picker');
+  wrap.innerHTML = '';
+  DOW_LABELS.forEach((lbl, i) => {
+    const chip = document.createElement('span');
+    chip.className = 'picker-chip' + (selectedDays.includes(i) ? ' on' : '');
+    chip.textContent = lbl; chip.dataset.val = i;
+    chip.onclick = () => chip.classList.toggle('on');
+    wrap.appendChild(chip);
+  });
+}
+
+function _getSelectedDays() {
+  return [...document.getElementById('cm-day-picker').querySelectorAll('.picker-chip.on')].map(el => parseInt(el.dataset.val));
+}
+
+function _renderWeekPicker(selectedWeeks) {
+  const wrap = document.getElementById('cm-week-picker');
+  wrap.innerHTML = '';
+  WEEK_LABELS.forEach((lbl, i) => {
+    const w = i + 1;
+    const chip = document.createElement('span');
+    chip.className = 'picker-chip' + (selectedWeeks.includes(w) ? ' on' : '');
+    chip.textContent = lbl; chip.dataset.val = w;
+    chip.onclick = () => chip.classList.toggle('on');
+    wrap.appendChild(chip);
+  });
+}
+
+function _getSelectedWeeks() {
+  return [...document.getElementById('cm-week-picker').querySelectorAll('.picker-chip.on')].map(el => parseInt(el.dataset.val));
+}
+
+function _renderMonthPicker(containerId, selectedMonths) {
+  const wrap = document.getElementById(containerId);
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  MONTH_LABELS.forEach((lbl, i) => {
+    const m = i + 1;
+    const chip = document.createElement('span');
+    chip.className = 'picker-chip' + (selectedMonths.includes(m) ? ' on' : '');
+    chip.textContent = lbl; chip.dataset.val = m;
+    chip.onclick = () => chip.classList.toggle('on');
+    wrap.appendChild(chip);
+  });
+}
+
+function _getSelectedMonths(containerId) {
+  return [...document.getElementById(containerId).querySelectorAll('.picker-chip.on')].map(el => parseInt(el.dataset.val));
+}
+
+async function saveChoreModal() {
+  const label = document.getElementById('cm-label').value.trim();
+  if (!label) { toast('Task name is required', 'err'); return; }
+  const userId = document.getElementById('cm-person').value;
+  if (!userId) { toast('Please select a person', 'err'); return; }
+  const recur    = document.getElementById('cm-recur').value;
+  const existing = _editingChoreId ? (D.chores||[]).find(c => c.id === _editingChoreId) : null;
+
+  const entry = {
+    id: _editingChoreId || 'ch_' + uid(),
+    userId, label, recur,
+    notify:       document.getElementById('cm-notify').checked,
+    notifyAssign: document.getElementById('cm-notify-assign').checked,
+    done:     existing?.done     || false,
+    doneDate: existing?.doneDate || null,
+    log:      existing?.log      || [],
+  };
+
+  if (recur === 'daily') {
+    entry.resetTimes = _getResetTimes();
+  } else if (recur === 'weekly') {
+    entry.days     = _getSelectedDays();
+    entry.showTime = document.getElementById('cm-show-time').value || null;
+  } else if (recur === 'monthly') {
+    entry.weekOfMonth = _getSelectedWeeks();
+    entry.months      = _getSelectedMonths('cm-month-picker');
+  } else if (recur === 'yearly') {
+    entry.months = _getSelectedMonths('cm-month-picker-yr');
+  }
+
+  D.chores = D.chores || [];
+  if (_editingChoreId) {
+    const idx = D.chores.findIndex(c => c.id === _editingChoreId);
+    if (idx >= 0) D.chores[idx] = entry; else D.chores.push(entry);
+  } else {
+    D.chores.push(entry);
+  }
+
+  await pushData();
+  closeModal('chore-modal');
+  renderChores();
+  toast(_editingChoreId ? 'Chore updated!' : 'Chore added!');
+}
+
+async function cloneChore() {
+  const src = _editingChoreId ? (D.chores||[]).find(c => c.id === _editingChoreId) : null;
+  if (!src) return;
+  const newId = 'ch_' + uid();
+  const clone = { ...src, id: newId, label: src.label + ' (copy)', done: false, doneDate: null, log: [] };
+  D.chores = D.chores || [];
+  D.chores.push(clone);
+  await pushData();
+  closeModal('chore-modal');
+  renderChores();
+  // Open the clone immediately so it can be edited
+  setTimeout(() => openChoreModal(newId), 120);
+  toast('Chore cloned — edit below');
+}
+
+async function deleteChore(id) {
+  const ch = (D.chores||[]).find(c => c.id === id);
+  if (!confirm(`Delete "${ch?.label || 'this chore'}"?`)) return;
+  D.chores = (D.chores || []).filter(c => c.id !== id);
+  await pushData();
+  renderChores();
+  toast('Chore deleted');
+}
+
+
+
+// ═══════════════════════════════════════════════════════════
+//  REMINDERS
+// ═══════════════════════════════════════════════════════════
+function renderReminders() {
+  const list = document.getElementById('reminder-admin-list');
+  const reminders = D.reminders || [];
+  list.innerHTML = '';
+  if (!reminders.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">📌</div><p>No reminders. Add one!</p></div>';
+    return;
+  }
+  reminders.forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'reminder-admin-row';
+    row.innerHTML = `
+      <span class="reminder-done-pill ${r.done ? 'done' : 'open'}">${r.done ? 'Done' : 'Open'}</span>
+      <span style="flex:1;font-size:13px;">${r.text}</span>
+      <button class="btn btn-secondary btn-xs" onclick="toggleReminder('${r.id}')">${r.done ? 'Re-open' : 'Mark done'}</button>
+      <button class="btn btn-danger btn-xs" onclick="deleteReminder('${r.id}')">✕</button>`;
+    list.appendChild(row);
+  });
+}
+
+function openReminderModal() {
+  document.getElementById('rm-text').value = '';
+  openModal('reminder-modal');
+  setTimeout(() => document.getElementById('rm-text').focus(), 50);
+}
+
+async function saveReminder() {
+  const text = document.getElementById('rm-text').value.trim();
+  if (!text) { toast('Reminder text required', 'err'); return; }
+  D.reminders = D.reminders || [];
+  D.reminders.push({ id: 'r_' + uid(), text, done: false });
+  await pushData();
+  closeModal('reminder-modal');
+  renderReminders();
+  toast('Reminder added!');
+}
+
+async function toggleReminder(id) {
+  const r = (D.reminders || []).find(x => x.id === id);
+  if (r) { r.done = !r.done; await pushData(); renderReminders(); }
+}
+
+async function deleteReminder(id) {
+  D.reminders = (D.reminders || []).filter(x => x.id !== id);
+  await pushData();
+  renderReminders();
+  toast('Reminder deleted');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EVENTS
+// ═══════════════════════════════════════════════════════════
+let editingEventId = null;
+
+function calColorMap() {
+  const map = { family: '#e8a840', kids: '#5db87a' };
+  (D.users || []).forEach(u => { map[u.id] = u.color; });
+  return map;
+}
+function calNameMap() {
+  const map = { family: 'Family', kids: 'Kids' };
+  (D.users || []).forEach(u => { map[u.id] = u.name; });
+  return map;
+}
+
+function populateCalSelect(selectId) {
+  const sel = document.getElementById(selectId);
+  sel.innerHTML = '';
+  const names = calNameMap();
+  Object.entries(names).forEach(([k, v]) => {
+    const o = document.createElement('option'); o.value = k; o.textContent = v; sel.appendChild(o);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════════════════════════
+function renderSettings() {
+  const s = D.settings || {};
+  document.getElementById('cfg-weather').value        = s.weatherLocation || '';
+  document.getElementById('cfg-weather-entity').value = s.weatherEntity   || '';
+  document.getElementById('cfg-todo-entity').value    = s.todoEntity      || '';
+  document.getElementById('cfg-poll').value           = s.pollIntervalSeconds || 30;
+  document.getElementById('cfg-log-days').value        = s.choreLogDays ?? 10;
+  const dedup = s.calendarDedup !== false;
+  document.getElementById('cfg-dedup').checked          = dedup;
+  document.getElementById('cfg-dedup-label').textContent = dedup ? 'Enabled' : 'Disabled';
+  const expand = s.alldayExpand !== false; // default true
+  document.getElementById('cfg-allday-expand').checked          = expand;
+  document.getElementById('cfg-allday-expand-label').textContent = expand ? 'Enabled' : 'Disabled';
+  document.getElementById('cfg-time-format').value = s.timeFormat || '24';
+  document.getElementById('cfg-week-start').value = s.weekStart !== undefined ? s.weekStart : 1; // default Monday
+  const showWeekNum = !!s.showWeekNum;
+  document.getElementById('cfg-show-week-num').checked          = showWeekNum;
+  document.getElementById('cfg-show-week-num-label').textContent = showWeekNum ? 'Enabled' : 'Disabled';
+  const showMoon = !!s.showMoon;
+  document.getElementById('cfg-show-moon').checked          = showMoon;
+  document.getElementById('cfg-show-moon-label').textContent = showMoon ? 'Enabled' : 'Disabled';
+  renderIPList();
+  detectMyIP();
+}
+
+// SHA-256 via Web Crypto (no server round-trip needed)
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function saveSettings() {
+  D.settings = D.settings || {};
+  const pw = document.getElementById('cfg-password').value;
+  if (pw) D.settings.adminPassword = await sha256(pw);
+  D.settings.weatherLocation       = document.getElementById('cfg-weather').value.trim();
+  D.settings.weatherEntity         = document.getElementById('cfg-weather-entity').value.trim();
+  D.settings.todoEntity            = document.getElementById('cfg-todo-entity').value.trim();
+  D.settings.pollIntervalSeconds    = parseInt(document.getElementById('cfg-poll').value) || 30;
+  D.settings.choreLogDays           = parseInt(document.getElementById('cfg-log-days').value) || 10;
+  D.settings.calendarDedup          = document.getElementById('cfg-dedup').checked;
+  D.settings.alldayExpand           = document.getElementById('cfg-allday-expand').checked;
+  D.settings.timeFormat             = document.getElementById('cfg-time-format').value;
+  D.settings.weekStart              = parseInt(document.getElementById('cfg-week-start').value);
+  D.settings.showWeekNum            = document.getElementById('cfg-show-week-num').checked;
+  D.settings.showMoon               = document.getElementById('cfg-show-moon').checked;
+  await pushData();
+  toast('Settings saved!');
+  document.getElementById('cfg-password').value = '';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PHOTO FRAME SETTINGS
+// ═══════════════════════════════════════════════════════════
+function renderPhotoFrameSettings() {
+  const s = D.settings || {};
+  document.getElementById('cfg-immich-url').value     = s.immichUrl    || '';
+  document.getElementById('cfg-immich-key').value     = s.immichApiKey ? '••••••••' : '';
+  document.getElementById('cfg-frame-idle').value     = s.frameIdleMinutes  ?? 5;
+  document.getElementById('cfg-frame-interval').value = s.frameIntervalSecs ?? 20;
+  const tapZones = s.frameTapZones !== false;
+  document.getElementById('cfg-frame-tapzones').checked          = tapZones;
+  document.getElementById('cfg-frame-tapzones-label').textContent = tapZones ? 'Enabled' : 'Disabled';
+  // Pre-select saved album if list is already populated
+  if (s.immichAlbumId) {
+    const sel = document.getElementById('cfg-immich-album');
+    const existing = [...sel.options].find(o => o.value === s.immichAlbumId);
+    if (!existing) {
+      const o = document.createElement('option');
+      o.value = s.immichAlbumId; o.textContent = s.immichAlbumName || s.immichAlbumId;
+      sel.appendChild(o);
+    }
+    sel.value = s.immichAlbumId;
+  }
+}
+
+async function savePhotoFrameSettings() {
+  D.settings = D.settings || {};
+  const immichUrl = document.getElementById('cfg-immich-url').value.trim();
+  const immichKey = document.getElementById('cfg-immich-key').value.trim();
+  if (immichUrl) D.settings.immichUrl = immichUrl;
+  if (immichKey && !immichKey.startsWith('•')) D.settings.immichApiKey = immichKey;
+  D.settings.frameIdleMinutes  = parseInt(document.getElementById('cfg-frame-idle').value)    || 5;
+  D.settings.frameIntervalSecs = parseInt(document.getElementById('cfg-frame-interval').value) || 20;
+  D.settings.frameTapZones     = document.getElementById('cfg-frame-tapzones').checked;
+  const albumSel = document.getElementById('cfg-immich-album');
+  if (albumSel.value) {
+    D.settings.immichAlbumId   = albumSel.value;
+    D.settings.immichAlbumName = albumSel.selectedOptions[0]?.textContent || albumSel.value;
+  }
+  await pushData();
+  toast('Photo frame settings saved!');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CONNECTION
+// ═══════════════════════════════════════════════════════════
+async function renderConnection() {
+  try {
+    const r = await fetch('/api/config');
+    const c = await r.json();
+    document.getElementById('cfg-ha-url').value    = c.ha_url || '';
+    document.getElementById('cfg-ha-token').value  = '';
+    const detail = document.getElementById('conn-status-detail');
+    detail.innerHTML = `
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:12px;">
+        <span style="color:var(--muted)">HA URL</span><span>${c.ha_url || '—'}</span>
+        <span style="color:var(--muted)">Token</span><span>${c.token_set ? '✓ Configured' : '✗ Not set'}</span>
+        <span style="color:var(--muted)">Port</span><span>${c.port || '8080'}</span>
+      </div>`;
+  } catch (e) {
+    document.getElementById('conn-status-detail').textContent = 'Could not load config: ' + e.message;
+  }
+}
+
+async function saveConnection() {
+  const url   = document.getElementById('cfg-ha-url').value.trim();
+  const token = document.getElementById('cfg-ha-token').value.trim();
+  if (!url) { toast('HA URL is required', 'err'); return; }
+  const body = { ha_url: url };
+  if (token) body.ha_token = token;
+  try {
+    const r = await fetch('/api/config', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    toast('Connection settings saved. Restart server to apply.');
+    renderConnection();
+  } catch (e) {
+    toast('Save failed: ' + e.message, 'err');
+  }
+}
+
+async function testConnection() {
+  const btn    = document.getElementById('test-conn-btn');
+  const result = document.getElementById('conn-result');
+  btn.disabled = true; btn.textContent = 'Testing…';
+  result.textContent = '';
+  try {
+    const r = await fetch('/api/ha/ping');
+    const d = await r.json();
+    if (d.ok) {
+      result.innerHTML = '<span style="color:var(--green)">✓ Connected to Home Assistant</span>';
+      toast('Connected ✓');
+    } else {
+      result.innerHTML = `<span style="color:var(--red)">✗ ${d.error || ('HTTP ' + d.status)}</span>`;
+      toast('Connection failed', 'err');
+    }
+    document.getElementById('conn-status-detail').innerHTML = `
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:12px;">
+        <span style="color:var(--muted)">HA URL</span><span>${d.ha_url || '—'}</span>
+        <span style="color:var(--muted)">Token</span><span>${d.token_set ? '✓ Configured' : '✗ Not set'}</span>
+        <span style="color:var(--muted)">Status</span><span style="color:${d.ok ? 'var(--green)':'var(--red)'}">${d.ok ? '✓ Online' : '✗ Offline — ' + (d.error || '')}</span>
+        ${d.message ? `<span style="color:var(--muted)">Message</span><span>${d.message}</span>` : ''}
+      </div>`;
+  } catch (e) {
+    result.innerHTML = `<span style="color:var(--red)">✗ ${e.message}</span>`;
+  }
+  btn.disabled = false; btn.textContent = 'Test Connection';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CALENDARS
+// ═══════════════════════════════════════════════════════════
+let editingCalIdx = null;
+
+function renderCalendars() {
+  const list = document.getElementById('calendars-list');
+  const cals  = D.calendars || [];
+  if (!cals.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">📅</div><p>No calendars configured.<br>Add one to start pulling events from HA.</p></div>';
+    return;
+  }
+  list.innerHTML = '';
+  cals.forEach((cal, idx) => {
+    const row = document.createElement('div');
+    row.className = 'chore-list-row';
+    row.style.cssText = 'align-items:center;';
+    row.innerHTML = `
+      <span class="color-swatch" style="background:${cal.color};width:14px;height:14px;border-radius:50%;flex-shrink:0;display:inline-block;"></span>
+      <span style="font-weight:600;font-size:13px;flex:0 0 100px;">${cal.name}</span>
+      <span style="font-size:11px;color:var(--muted);flex:1;font-family:monospace;">${cal.entity}</span>
+      <button class="btn btn-secondary btn-xs" onclick="openCalendarModal(${idx})">Edit</button>
+      <button class="btn btn-danger btn-xs" onclick="deleteCalendar(${idx})">✕</button>`;
+    list.appendChild(row);
+  });
+}
+
+function openCalendarModal(idx) {
+  editingCalIdx = idx !== undefined ? idx : null;
+  const cal = idx !== undefined ? (D.calendars || [])[idx] : null;
+  document.getElementById('cal-modal-title').textContent = cal ? 'Edit Calendar' : 'Add Calendar';
+  document.getElementById('cm-name').value   = cal?.name   || '';
+  document.getElementById('cm-entity').value = cal?.entity || '';
+  document.getElementById('cm-color').value  = cal?.color  || '#a78bfa';
+  document.getElementById('cm-no-expand').checked = !!cal?.noExpandAllDay;
+  openModal('calendar-modal');
+  setTimeout(() => document.getElementById('cm-name').focus(), 50);
+}
+
+async function saveCalendarEntry() {
+  const name          = document.getElementById('cm-name').value.trim();
+  const entity        = document.getElementById('cm-entity').value.trim();
+  const color         = document.getElementById('cm-color').value;
+  const noExpandAllDay = document.getElementById('cm-no-expand').checked;
+  if (!name || !entity) { toast('Name and entity ID are required', 'err'); return; }
+  D.calendars = D.calendars || [];
+  if (editingCalIdx !== null) {
+    D.calendars[editingCalIdx] = { name, entity, color, noExpandAllDay };
+  } else {
+    D.calendars.push({ name, entity, color, noExpandAllDay });
+  }
+  await pushData();
+  closeModal('calendar-modal');
+  renderCalendars();
+  toast(editingCalIdx !== null ? 'Calendar updated' : 'Calendar added!');
+}
+
+async function deleteCalendar(idx) {
+  const cal = (D.calendars || [])[idx];
+  if (!cal || !confirm(`Remove "${cal.name}"?`)) return;
+  D.calendars.splice(idx, 1);
+  await pushData();
+  renderCalendars();
+  toast('Calendar removed');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  HA ENTITIES
+// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+//  HA ENTITIES — NAMED SLOT EDITOR
+// ═══════════════════════════════════════════════════════════
+
+const SLOT_ICONS = ['lock','gate','moon','bulb','ac','drop','tv','music','bolt','fan','door','bell'];
+const SLOT_ICON_SVG = {
+  lock: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>`,
+  gate: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"/></svg>`,
+  moon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"/></svg>`,
+  bulb: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/></svg>`,
+  ac:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="3"/><path d="M6 13h12M7 16l1-3m8 3l-1-3"/></svg>`,
+  drop: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21a9 9 0 009-9c0-4.97-9-12-9-12S3 7.03 3 12a9 9 0 009 9z"/></svg>`,
+  tv:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>`,
+  music:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>`,
+  bolt: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>`,
+  fan:  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z"/></svg>`,
+  door: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16M15 12h.01"/></svg>`,
+  bell: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>`,
+};
+
+// Domain → default services lookup
+const DOMAIN_SERVICES = {
+  lock:          { on:'lock',       off:'unlock' },
+  cover:         { on:'open_cover', off:'close_cover' },
+  light:         { on:'turn_on',    off:'turn_off' },
+  switch:        { on:'turn_on',    off:'turn_off' },
+  climate:       { on:'turn_on',    off:'turn_off' },
+  media_player:  { on:'turn_on',    off:'turn_off' },
+  input_boolean: { on:'turn_on',    off:'turn_off' },
+  automation:    { on:'turn_on',    off:'turn_off' },
+  script:        { on:'turn_on',    off:'turn_off' },
+  fan:           { on:'turn_on',    off:'turn_off' },
+};
+
+const TOPBAR_NAMES  = ['Top Menu Button 1','Top Menu Button 2','Top Menu Button 3'];
+const CONTROL_NAMES = ['Controls Button 1','Controls Button 2','Controls Button 3',
+                       'Controls Button 4','Controls Button 5','Controls Button 6'];
+const SENSOR_NAMES  = ['Home Sensor 1','Home Sensor 2','Home Sensor 3','Home Sensor 4'];
+const SENSOR_EMOJI  = { temperature:'🌡️', humidity:'💧', door:'🚪', alarm:'🔒', generic:'📊' };
+
+// Default shapes (used if data.json doesn't have the fields yet)
+const DEFAULT_TOPBAR_DATA = [
+  {id:'tb0',label:'Lock', icon:'lock',entity:'',domain:'lock',        on_service:'lock',       off_service:'unlock'},
+  {id:'tb1',label:'Gate', icon:'gate',entity:'',domain:'cover',       on_service:'open_cover', off_service:'close_cover'},
+  {id:'tb2',label:'Night',icon:'moon',entity:'',domain:'',            on_service:'',           off_service:''},
+];
+const DEFAULT_CONTROL_DATA = [
+  {id:'cb0',label:'Lounge',   icon:'bulb', entity:'',domain:'light',        on_service:'turn_on',off_service:'turn_off'},
+  {id:'cb1',label:'Kitchen',  icon:'bulb', entity:'',domain:'light',        on_service:'turn_on',off_service:'turn_off'},
+  {id:'cb2',label:'A/C',      icon:'ac',   entity:'',domain:'climate',      on_service:'turn_on',off_service:'turn_off'},
+  {id:'cb3',label:'Hot Water',icon:'drop', entity:'',domain:'',             on_service:'',       off_service:''},
+  {id:'cb4',label:'TV',       icon:'tv',   entity:'',domain:'media_player', on_service:'turn_on',off_service:'turn_off'},
+  {id:'cb5',label:'Music',    icon:'music',entity:'',domain:'media_player', on_service:'turn_on',off_service:'turn_off'},
+];
+const DEFAULT_SENSOR_DATA = [
+  {id:'s-temp', label:'Inside temp',    entity:'',type:'temperature'},
+  {id:'s-hum',  label:'Humidity',       entity:'',type:'humidity'},
+  {id:'s-doors',label:'Doors & Windows',entity:'',type:'door'},
+  {id:'s-sec',  label:'Security',       entity:'',type:'alarm'},
+];
+
+function getAdminTopbar()   { return D.topbar_buttons  || DEFAULT_TOPBAR_DATA; }
+function getAdminControls() { return D.control_buttons || DEFAULT_CONTROL_DATA; }
+function getAdminSensors()  { return D.sensors         || DEFAULT_SENSOR_DATA; }
+
+function renderEntities() {
+  _renderBtnSlots('topbar-slots',  getAdminTopbar(),   TOPBAR_NAMES,  'topbar');
+  _renderBtnSlots('control-slots', getAdminControls(), CONTROL_NAMES, 'control');
+  _renderSensorSlots();
+}
+
+function _renderBtnSlots(containerId, items, names, group) {
+  const wrap = document.getElementById(containerId);
+  wrap.innerHTML = '';
+  items.forEach((btn, i) => {
+    const hasEntity = !!btn.entity;
+    const row = document.createElement('div');
+    row.className = 'chore-list-row';
+    row.style.cssText = 'align-items:center;padding:11px 20px;gap:12px;';
+    row.innerHTML = `
+      <div style="width:34px;height:34px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+                  background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+                  color:var(--muted);opacity:${hasEntity ? 1 : 0.35};">
+        ${SLOT_ICON_SVG[btn.icon] || SLOT_ICON_SVG.bulb}
+      </div>
+      <div style="flex:1;min-width:0;overflow:hidden;">
+        <div style="font-size:12px;font-weight:600;color:${hasEntity ? 'var(--text)' : 'var(--faint)'};">${names[i]}</div>
+        <div style="font-size:11px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          ${hasEntity
+            ? `<span style="color:var(--text);font-weight:500;">${btn.label}</span>
+               <span style="color:var(--faint);"> &middot; </span>
+               <span style="font-family:monospace;font-size:10px;color:var(--muted);">${btn.entity}</span>`
+            : `<em style="color:var(--faint);">No entity set — hidden on dashboard</em>`
+          }
+        </div>
+      </div>
+      <button class="btn btn-secondary btn-xs" onclick="openSlotModal('${group}',${i})">Edit</button>`;
+    wrap.appendChild(row);
+  });
+}
+
+function _renderSensorSlots() {
+  const wrap = document.getElementById('sensor-slots');
+  wrap.innerHTML = '';
+  getAdminSensors().forEach((s, i) => {
+    const hasEntity = !!s.entity;
+    const row = document.createElement('div');
+    row.className = 'chore-list-row';
+    row.style.cssText = 'align-items:center;padding:11px 20px;gap:12px;';
+    row.innerHTML = `
+      <div style="width:34px;height:34px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+                  background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+                  font-size:16px;opacity:${hasEntity ? 1 : 0.35};">
+        ${SENSOR_EMOJI[s.type] || '📊'}
+      </div>
+      <div style="flex:1;min-width:0;overflow:hidden;">
+        <div style="font-size:12px;font-weight:600;color:${hasEntity ? 'var(--text)' : 'var(--faint)'};">${SENSOR_NAMES[i]}</div>
+        <div style="font-size:11px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          ${hasEntity
+            ? `<span style="color:var(--text);font-weight:500;">${s.label}</span>
+               <span style="color:var(--faint);"> &middot; </span>
+               <span style="font-family:monospace;font-size:10px;color:var(--muted);">${s.entity}</span>
+               <span style="color:var(--faint);"> &middot; </span>
+               <span style="color:var(--gold);font-size:9px;text-transform:uppercase;font-weight:600;letter-spacing:.3px;">${s.type}</span>`
+            : `<em style="color:var(--faint);">No entity set — hidden on dashboard</em>`
+          }
+        </div>
+      </div>
+      <button class="btn btn-secondary btn-xs" onclick="openSlotModal('sensor',${i})">Edit</button>`;
+    wrap.appendChild(row);
+  });
+}
+
+// ── Slot edit modal ─────────────────────────────────────
+let _slotGroup = null;
+let _slotIdx   = null;
+
+// Auto-detect domain from entity ID prefix (e.g. "lock.xxx" → "lock")
+function _entityToDomain(entityId) {
+  if (!entityId) return '';
+  const prefix = entityId.split('.')[0];
+  return DOMAIN_SERVICES[prefix] ? prefix : '';
+}
+
+function onSlotEntityInput(val) {
+  const trimmed = val.trim();
+  const domain  = _entityToDomain(trimmed);
+  const hint    = document.getElementById('sm-entity-hint');
+  const svcRow  = document.getElementById('sm-svc-row');
+  const svcNote = document.getElementById('sm-svc-note');
+
+  if (!trimmed) {
+    hint.innerHTML = `<span style="color:var(--faint);">Button will be hidden when blank.</span>`;
+    svcRow.style.display = 'none';
+    document.getElementById('sm-domain').value = '';
+    return;
+  }
+
+  if (domain) {
+    hint.innerHTML = `<span style="color:var(--green);">✓ Domain detected: <strong>${domain}</strong></span>`;
+    svcNote.textContent = '(auto-filled — edit if needed)';
+    document.getElementById('sm-domain').value   = domain;
+    document.getElementById('sm-on-svc').value   = DOMAIN_SERVICES[domain].on;
+    document.getElementById('sm-off-svc').value  = DOMAIN_SERVICES[domain].off;
+  } else {
+    hint.innerHTML = `<span style="color:var(--muted);">Unknown domain — fill in services below.</span>`;
+    svcNote.textContent = '(fill in manually)';
+    document.getElementById('sm-domain').value = trimmed.split('.')[0] || '';
+    document.getElementById('sm-on-svc').value  = '';
+    document.getElementById('sm-off-svc').value = '';
+  }
+  svcRow.style.display = '';
+}
+
+function openSlotModal(group, idx) {
+  _slotGroup = group;
+  _slotIdx   = idx;
+  const isSensor = group === 'sensor';
+
+  document.getElementById('slot-btn-fields').style.display    = isSensor ? 'none' : '';
+  document.getElementById('slot-sensor-fields').style.display = isSensor ? '' : 'none';
+
+  if (isSensor) {
+    const s = getAdminSensors()[idx];
+    document.getElementById('slot-modal-title').textContent = SENSOR_NAMES[idx];
+    document.getElementById('sm-sensor-label').value        = s.label  || '';
+    document.getElementById('sm-sensor-entity').value       = s.entity || '';
+    document.getElementById('sm-sensor-type').value         = s.type   || 'generic';
+    document.getElementById('sm-alarm-pin').checked         = !!s.requirePin;
+    _syncAlarmPinLabel();
+    onSensorTypeChange();
+  } else {
+    const items = group === 'topbar' ? getAdminTopbar()   : getAdminControls();
+    const names = group === 'topbar' ? TOPBAR_NAMES       : CONTROL_NAMES;
+    const btn   = items[idx];
+
+    document.getElementById('slot-modal-title').textContent = names[idx];
+    document.getElementById('sm-label').value               = btn.label  || '';
+    document.getElementById('sm-entity').value              = btn.entity || '';
+    document.getElementById('sm-domain').value              = btn.domain || '';
+    document.getElementById('sm-on-svc').value              = btn.on_service  || '';
+    document.getElementById('sm-off-svc').value             = btn.off_service || '';
+
+    // Show/update the entity hint line without overwriting existing services
+    const trimmed = (btn.entity || '').trim();
+    const domain  = _entityToDomain(trimmed);
+    const hint    = document.getElementById('sm-entity-hint');
+    const svcRow  = document.getElementById('sm-svc-row');
+    const svcNote = document.getElementById('sm-svc-note');
+    if (!trimmed) {
+      hint.innerHTML = `<span style="color:var(--faint);">Button will be hidden when blank.</span>`;
+      svcRow.style.display = 'none';
+    } else if (domain) {
+      hint.innerHTML  = `<span style="color:var(--green);">✓ Domain detected: <strong>${domain}</strong></span>`;
+      svcNote.textContent = '(auto-filled — edit if needed)';
+      svcRow.style.display = '';
+    } else {
+      hint.innerHTML  = `<span style="color:var(--muted);">Unknown domain — fill in services below.</span>`;
+      svcNote.textContent = '(fill in manually)';
+      svcRow.style.display = '';
+    }
+
+    // Build icon picker
+    const picker      = document.getElementById('sm-icon-picker');
+    const currentIcon = btn.icon || 'bulb';
+    picker.innerHTML  = '';
+    document.getElementById('sm-icon').value = currentIcon;
+    SLOT_ICONS.forEach(ic => {
+      const b = document.createElement('div');
+      b.title = ic;
+      b.style.cssText = `width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+        border-radius:7px;cursor:pointer;flex-shrink:0;
+        border:2px solid ${ic === currentIcon ? 'var(--gold)' : 'var(--border)'};
+        background:var(--surface2);color:var(--muted);transition:border-color .15s;`;
+      b.innerHTML = SLOT_ICON_SVG[ic] || '';
+      b.querySelector('svg').style.cssText = 'width:18px;height:18px;pointer-events:none;';
+      b.onclick = () => {
+        document.getElementById('sm-icon').value = ic;
+        picker.querySelectorAll('div').forEach(x => x.style.borderColor = 'var(--border)');
+        b.style.borderColor = 'var(--gold)';
+      };
+      picker.appendChild(b);
+    });
+  }
+
+  openModal('slot-modal');
+}
+
+function onSensorTypeChange() {
+  const type = document.getElementById('sm-sensor-type').value;
+  document.getElementById('sm-alarm-opts').style.display = type === 'alarm' ? '' : 'none';
+}
+
+function _syncAlarmPinLabel() {
+  const cb  = document.getElementById('sm-alarm-pin');
+  const lbl = document.getElementById('sm-alarm-pin-label');
+  lbl.textContent = cb.checked ? 'On' : 'Off';
+}
+
+async function saveSlot() {
+  if (_slotGroup === 'sensor') {
+    const label      = document.getElementById('sm-sensor-label').value.trim();
+    const entity     = document.getElementById('sm-sensor-entity').value.trim();
+    const type       = document.getElementById('sm-sensor-type').value;
+    const requirePin = type === 'alarm' && document.getElementById('sm-alarm-pin').checked;
+    if (!label) { toast('Label is required', 'err'); return; }
+    D.sensors = getAdminSensors().map(x => ({...x}));
+    D.sensors[_slotIdx] = { ...D.sensors[_slotIdx], label, entity, type, requirePin };
+  } else {
+    const label       = document.getElementById('sm-label').value.trim();
+    const entity      = document.getElementById('sm-entity').value.trim();
+    const domain      = document.getElementById('sm-domain').value.trim();
+    const on_service  = document.getElementById('sm-on-svc').value.trim();
+    const off_service = document.getElementById('sm-off-svc').value.trim();
+    const icon        = document.getElementById('sm-icon').value || 'bulb';
+    if (!label) { toast('Label is required', 'err'); return; }
+
+    if (_slotGroup === 'topbar') {
+      D.topbar_buttons = getAdminTopbar().map(x => ({...x}));
+      D.topbar_buttons[_slotIdx] = { ...D.topbar_buttons[_slotIdx], label, icon, entity, domain, on_service, off_service };
+    } else {
+      D.control_buttons = getAdminControls().map(x => ({...x}));
+      D.control_buttons[_slotIdx] = { ...D.control_buttons[_slotIdx], label, icon, entity, domain, on_service, off_service };
+    }
+  }
+
+  await pushData();
+  closeModal('slot-modal');
+  renderEntities();
+  toast('Saved!');
+}
+
+
+
+// ═══════════════════════════════════════════════════════════
+//  IP ALLOWLIST
+// ═══════════════════════════════════════════════════════════
+let _detectedIP = null;
+
+async function detectMyIP() {
+  try {
+    const r = await fetch('/api/myip');
+    const d = await r.json();
+    _detectedIP = d.ip;
+    document.getElementById('my-ip-display').textContent = d.ip || '—';
+  } catch {
+    document.getElementById('my-ip-display').textContent = 'unavailable';
+  }
+}
+
+function renderIPList() {
+  const list = document.getElementById('ip-list');
+  const ips  = D.settings?.allowedIPs || [];
+  if (!ips.length) {
+    list.innerHTML = '<div style="padding:14px 0;font-size:12px;color:var(--muted);">No IPs configured — all LAN devices can access the dashboard.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  ips.forEach((ip, idx) => {
+    const row = document.createElement('div');
+    row.className = 'chore-list-row';
+    row.innerHTML = `
+      <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:var(--green);fill:none;stroke-width:2;flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
+      <span style="font-family:monospace;font-size:13px;flex:1;">${ip}</span>
+      ${ip === _detectedIP ? '<span style="font-size:10px;background:var(--gold-bg);color:var(--gold);padding:1px 7px;border-radius:10px;font-weight:600;">this device</span>' : ''}
+      <button class="btn btn-danger btn-xs" onclick="deleteIP(${idx})">✕</button>`;
+    list.appendChild(row);
+  });
+}
+
+function openAddIPModal() {
+  document.getElementById('ip-input').value = '';
+  openModal('ip-modal');
+  setTimeout(() => document.getElementById('ip-input').focus(), 50);
+}
+
+async function saveIP() {
+  const raw = document.getElementById('ip-input').value.trim();
+  // Basic IP validation (v4 or v6)
+  if (!raw) { toast('Enter an IP address', 'err'); return; }
+  const ipv4 = /^(\d{1,3}\.){3}\d{1,3}$/.test(raw);
+  const ipv6 = raw.includes(':');
+  if (!ipv4 && !ipv6) { toast('Enter a valid IP address', 'err'); return; }
+  D.settings = D.settings || {};
+  D.settings.allowedIPs = D.settings.allowedIPs || [];
+  if (D.settings.allowedIPs.includes(raw)) { toast('IP already in list', 'err'); return; }
+  D.settings.allowedIPs.push(raw);
+  await pushData();
+  closeModal('ip-modal');
+  renderIPList();
+  toast(`${raw} added to allowlist`);
+}
+
+async function addMyIP() {
+  if (!_detectedIP) { toast('Could not detect IP', 'err'); return; }
+  D.settings = D.settings || {};
+  D.settings.allowedIPs = D.settings.allowedIPs || [];
+  if (D.settings.allowedIPs.includes(_detectedIP)) {
+    toast('Your IP is already in the list');
+    return;
+  }
+  D.settings.allowedIPs.push(_detectedIP);
+  await pushData();
+  renderIPList();
+  toast(`${_detectedIP} added — this device is now on the allowlist`);
+}
+
+async function deleteIP(idx) {
+  const ip = (D.settings?.allowedIPs || [])[idx];
+  if (!ip) return;
+  if (ip === _detectedIP) {
+    if (!confirm(`Remove ${ip}? This is your current device — you may lose access to admin from this IP.`)) return;
+  } else {
+    if (!confirm(`Remove ${ip} from the allowlist?`)) return;
+  }
+  D.settings.allowedIPs.splice(idx, 1);
+  await pushData();
+  renderIPList();
+  toast(`${ip} removed`);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  IMMICH
+// ═══════════════════════════════════════════════════════════
+async function loadImmichAlbums() {
+  const btn = document.getElementById('load-albums-btn');
+  btn.disabled = true; btn.textContent = 'Loading…';
+  // Save current URL+key first so server can use them
+  const url = document.getElementById('cfg-immich-url').value.trim();
+  const key = document.getElementById('cfg-immich-key').value.trim();
+  if (url) { D.settings = D.settings || {}; D.settings.immichUrl = url; }
+  if (key && !key.startsWith('•')) { D.settings = D.settings || {}; D.settings.immichApiKey = key; }
+  if (url || (key && !key.startsWith('•'))) await pushData();
+
+  try {
+    const r = await fetch('/api/immich/albums');
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+    const sel = document.getElementById('cfg-immich-album');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">— choose an album —</option>';
+    d.forEach(album => {
+      const o = document.createElement('option');
+      o.value = album.id;
+      o.textContent = `${album.name} (${album.count} photos)`;
+      sel.appendChild(o);
+    });
+    if (current) sel.value = current;
+    toast(`${d.length} album${d.length !== 1 ? 's' : ''} loaded`);
+  } catch (e) {
+    toast('Could not load albums: ' + e.message, 'err');
+  }
+  btn.disabled = false; btn.textContent = 'Load';
+}
+
+async function testImmich() {
+  const btn    = document.getElementById('test-immich-btn');
+  const result = document.getElementById('immich-test-result');
+  btn.disabled = true; btn.textContent = 'Testing…';
+  result.innerHTML = '';
+  try {
+    const r = await fetch('/api/immich/test');
+    const d = await r.json();
+    const rows = d.steps.map(s =>
+      `<div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+        <span style="color:${s.ok ? 'var(--green)' : 'var(--red)'};">${s.ok ? '✓' : '✗'}</span>
+        <span style="font-size:11px;font-weight:600;min-width:48px">${s.name}</span>
+        <span style="font-size:11px;color:var(--muted)">${s.detail}</span>
+      </div>`
+    ).join('');
+    const allOk = d.steps.every(s => s.ok);
+    result.innerHTML = `<div style="margin-top:6px;">${rows}</div>`;
+    if (allOk) toast('Immich connection ✓ — all steps passed');
+    else toast('Immich check failed — see details', 'err');
+  } catch (e) {
+    result.innerHTML = `<span style="color:var(--red)">✗ ${e.message}</span>`;
+  }
+  btn.disabled = false; btn.textContent = 'Test Connection';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RESET
+// ═══════════════════════════════════════════════════════════
+async function resetByRecur(recur) {
+  if (!confirm(`Reset all ${recur} chores?`)) return;
+  (D.chores || []).filter(c => c.recur === recur).forEach(c => { c.done = false; c.doneDate = null; });
+  await pushData();
+  toast(`All ${recur} chores reset`);
+}
+
+async function resetAll() {
+  if (!confirm('Reset ALL chores? This cannot be undone.')) return;
+  (D.chores || []).forEach(c => { c.done = false; c.doneDate = null; });
+  await pushData();
+  toast('All chores reset!');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+//  THEME PRESETS
+// ═══════════════════════════════════════════════════════════
+const THEME_PRESETS = {
+  'dark-obsidian': { label:'Obsidian',  mode:'dark',  bg:'#0e0d0c', surface:'#161512', surface2:'#1d1b18', border:'rgba(255,255,255,0.07)', accent:'#e8a840', text:'#f0ece4', muted:'rgba(240,236,228,0.45)', faint:'rgba(240,236,228,0.20)', green:'#5db87a', red:'#e86060' },
+  'dark-midnight': { label:'Midnight',  mode:'dark',  bg:'#0d1117', surface:'#161b22', surface2:'#1c2128', border:'rgba(255,255,255,0.08)', accent:'#58a6ff', text:'#e6edf3', muted:'rgba(230,237,243,0.45)', faint:'rgba(230,237,243,0.20)', green:'#3fb950', red:'#f85149' },
+  'dark-forest':   { label:'Forest',    mode:'dark',  bg:'#0d1a12', surface:'#122019', surface2:'#182b21', border:'rgba(255,255,255,0.07)', accent:'#4ade80', text:'#e8f5ec', muted:'rgba(232,245,236,0.45)', faint:'rgba(232,245,236,0.20)', green:'#4ade80', red:'#f87171' },
+  'dark-slate':    { label:'Slate',     mode:'dark',  bg:'#0f1117', surface:'#181c25', surface2:'#1e2432', border:'rgba(255,255,255,0.08)', accent:'#a78bfa', text:'#e2e8f0', muted:'rgba(226,232,240,0.45)', faint:'rgba(226,232,240,0.20)', green:'#34d399', red:'#f87171' },
+  'dark-rose':     { label:'Rose',      mode:'dark',  bg:'#120d0f', surface:'#1a1215', surface2:'#211620', border:'rgba(255,255,255,0.07)', accent:'#fb7185', text:'#fce7f3', muted:'rgba(252,231,243,0.45)', faint:'rgba(252,231,243,0.20)', green:'#4ade80', red:'#fb7185' },
+  'light-cloud':   { label:'Cloud',     mode:'light', bg:'#f0f2f5', surface:'#ffffff', surface2:'#e8eaed', border:'rgba(0,0,0,0.09)',       accent:'#c8780a', text:'#1a1815', muted:'rgba(26,24,21,0.50)',    faint:'rgba(26,24,21,0.28)',    green:'#1e7a40', red:'#c0392b' },
+  'light-ocean':   { label:'Ocean',      mode:'light', bg:'#eff6ff', surface:'#ffffff', surface2:'#dbeafe', border:'rgba(0,0,0,0.09)',       accent:'#1d4ed8', text:'#1e3a5f', muted:'rgba(30,58,95,0.50)',    faint:'rgba(30,58,95,0.28)',    green:'#15803d', red:'#be123c' },
+  'light-mint':    { label:'Mint',      mode:'light', bg:'#f0faf4', surface:'#ffffff', surface2:'#e6f4ec', border:'rgba(0,0,0,0.08)',       accent:'#16a34a', text:'#0f2419', muted:'rgba(15,36,25,0.50)',    faint:'rgba(15,36,25,0.28)',    green:'#16a34a', red:'#dc2626' },
+  'light-slate':   { label:'Slate',     mode:'light', bg:'#f1f5f9', surface:'#ffffff', surface2:'#e2e8f0', border:'rgba(0,0,0,0.09)',       accent:'#6d28d9', text:'#1e293b', muted:'rgba(30,41,59,0.50)',    faint:'rgba(30,41,59,0.28)',    green:'#15803d', red:'#be123c' },
+  'light-rose':    { label:'Rose',      mode:'light', bg:'#fff1f4', surface:'#ffffff', surface2:'#fde8ec', border:'rgba(0,0,0,0.08)',       accent:'#e11d48', text:'#1f0a10', muted:'rgba(31,10,16,0.50)',    faint:'rgba(31,10,16,0.28)',    green:'#15803d', red:'#e11d48' },
+};
+
+function _hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `${r},${g},${b}`;
+}
+
+function applyThemePreset(key, mode) {
+  const t = THEME_PRESETS[key];
+  if (!t) return;
+  const isLight = (mode || t.mode) === 'light';
+  document.documentElement.classList.toggle('light', isLight);
+  const rgb = _hexToRgb(t.accent);
+  const el = document.documentElement;
+  el.style.setProperty('--bg',       t.bg);
+  el.style.setProperty('--surface',  t.surface);
+  el.style.setProperty('--surface2', t.surface2);
+  el.style.setProperty('--border',   t.border);
+  el.style.setProperty('--border2',  isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.14)');
+  el.style.setProperty('--gold',     t.accent);
+  el.style.setProperty('--gold-bg',  `rgba(${rgb},0.08)`);
+  el.style.setProperty('--gold-bd',  `rgba(${rgb},0.20)`);
+  el.style.setProperty('--gold-dim', `rgba(${rgb},0.12)`);
+  el.style.setProperty('--gold-mid', `rgba(${rgb},0.28)`);
+  el.style.setProperty('--text',     t.text);
+  el.style.setProperty('--muted',    t.muted);
+  el.style.setProperty('--faint',    t.faint);
+  el.style.setProperty('--green',    t.green);
+  el.style.setProperty('--green-bg', `rgba(${_hexToRgb(t.green)},0.10)`);
+  el.style.setProperty('--red',      t.red);
+  el.style.setProperty('--red-bg',   `rgba(${_hexToRgb(t.red)},0.10)`);
+  el.style.setProperty('--blue',     isLight ? '#2563eb' : '#58a6ff');
+  el.style.setProperty('--shadow',   isLight ? '0 1px 4px rgba(0,0,0,0.08),0 4px 16px rgba(0,0,0,0.04)' : '0 1px 4px rgba(0,0,0,0.18),0 4px 16px rgba(0,0,0,0.10)');
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = isLight ? '🌙' : '☀️';
+}
+
+function _getPresetForMode(mode, settings) {
+  if (mode === 'light') return (settings || {}).lightTheme  || 'light-cloud';
+  return (settings || {}).darkTheme || 'dark-obsidian';
+}
+
+function _getCurrentMode() {
+  return document.documentElement.classList.contains('light') ? 'light' : 'dark';
+}
+
+function setThemeMode(mode) {
+  const preset = _getPresetForMode(mode, D?.settings);
+  applyThemePreset(preset, mode);
+  if (D?.settings) D.settings.themeMode = mode;
+  try { localStorage.setItem('fp-theme', mode); } catch {}
+  renderAppearance();
+  if (D) pushData().catch(() => {});
+}
+
+function toggleTheme() {
+  const willBeLight = !document.documentElement.classList.contains('light');
+  setThemeMode(willBeLight ? 'light' : 'dark');
+}
+
+function renderAppearance() {
+  const s = D?.settings || {};
+  const mode = s.themeMode || _getCurrentMode();
+
+  ['dark','light'].forEach(m => {
+    const grid = document.getElementById(`${m}-preset-grid`);
+    if (!grid) return;
+    const currentPreset = m === 'dark' ? (s.darkTheme || 'dark-obsidian') : (s.lightTheme || 'light-cloud');
+    grid.innerHTML = '';
+    Object.entries(THEME_PRESETS)
+      .filter(([, t]) => t.mode === m)
+      .forEach(([key, t]) => {
+        const card = document.createElement('div');
+        card.className = 'preset-card' + (key === currentPreset ? ' selected' : '');
+        card.title = t.label;
+        const rgb = _hexToRgb(t.accent);
+        card.innerHTML = `
+          <div class="preset-swatch" style="background:${t.bg};">
+            <div class="preset-swatch-bar" style="background:${t.surface};height:70%;"></div>
+            <div class="preset-swatch-bar" style="background:${t.surface2};height:55%;"></div>
+            <div class="preset-swatch-bar" style="background:${t.accent};height:85%;"></div>
+            <div class="preset-swatch-bar" style="background:${t.text};opacity:.7;height:50%;"></div>
+          </div>
+          <div class="preset-label" style="background:${t.surface};color:${t.text};">${t.label}</div>`;
+        card.addEventListener('click', () => selectPreset(m, key));
+        grid.appendChild(card);
+      });
+  });
+}
+
+async function selectPreset(mode, key) {
+  D.settings = D.settings || {};
+  if (mode === 'dark')  D.settings.darkTheme  = key;
+  if (mode === 'light') D.settings.lightTheme = key;
+  // Always switch to the mode of the clicked preset
+  D.settings.themeMode = mode;
+  applyThemePreset(key, mode);
+  try { localStorage.setItem('fp-theme', mode); } catch {}
+  await pushData();
+  renderAppearance();
+  toast('Theme saved!');
+}
+
+// Apply theme on page load (called from init after D loads)
+function initTheme() {
+  const saved = (() => { try { return localStorage.getItem('fp-theme'); } catch { return null; } })();
+  const mode = D?.settings?.themeMode || saved || 'dark';
+  const preset = _getPresetForMode(mode, D?.settings);
+  applyThemePreset(preset, mode);
+}
+
+async function init() {
+  // Wire dedup checkbox to update its label live
+  document.getElementById('cfg-dedup').addEventListener('change', function() {
+    document.getElementById('cfg-dedup-label').textContent = this.checked ? 'Enabled' : 'Disabled';
+  });
+  document.getElementById('cfg-allday-expand').addEventListener('change', function() {
+    document.getElementById('cfg-allday-expand-label').textContent = this.checked ? 'Enabled' : 'Disabled';
+  });
+  document.getElementById('cfg-show-week-num').addEventListener('change', function() {
+    document.getElementById('cfg-show-week-num-label').textContent = this.checked ? 'Enabled' : 'Disabled';
+  });
+  document.getElementById('cfg-show-moon').addEventListener('change', function() {
+    document.getElementById('cfg-show-moon-label').textContent = this.checked ? 'Enabled' : 'Disabled';
+  });
+  document.getElementById('cfg-frame-tapzones').addEventListener('change', function() {
+    document.getElementById('cfg-frame-tapzones-label').textContent = this.checked ? 'Enabled' : 'Disabled';
+  });
+  try {
+    D = await fetchData();
+    initTheme();
+    renderUsers();
+    // Show version
+    try {
+      const vr = await fetch('/api/version');
+      if (vr.ok) { const vd = await vr.json(); document.getElementById('app-version').textContent = 'v' + (vd.version || ''); }
+    } catch {}
+  } catch (e) {
+    document.getElementById('main').innerHTML = `
+      <div style="padding:40px;text-align:center;">
+        <div style="font-size:36px;margin-bottom:12px;">⚠️</div>
+        <div style="font-size:16px;font-weight:600;color:var(--red);">Could not connect to server</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:8px;">Make sure server.js or server.py is running.</div>
+      </div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>

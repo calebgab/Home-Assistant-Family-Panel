@@ -1,0 +1,5 @@
+{
+  "ha_url": "http://homeassistant.local:8123",
+  "ha_token": "PASTE_YOUR_LONG_LIVED_TOKEN_HERE",
+  "port": 8080
+}

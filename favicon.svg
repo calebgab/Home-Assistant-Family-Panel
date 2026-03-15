@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a1712"/>
+      <stop offset="100%" stop-color="#0e0d0c"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f0c040"/>
+      <stop offset="100%" stop-color="#c8780a"/>
+    </linearGradient>
+  </defs>
+  <!-- Background rounded square -->
+  <rect width="32" height="32" rx="7" fill="url(#bg)"/>
+  <!-- House roof -->
+  <polygon points="16,5 27,14 5,14" fill="url(#gold)" opacity="0.95"/>
+  <!-- House body -->
+  <rect x="8" y="14" width="16" height="13" rx="1" fill="url(#gold)" opacity="0.85"/>
+  <!-- Door -->
+  <rect x="13" y="19" width="6" height="8" rx="1" fill="#1a1712"/>
+  <!-- Window left -->
+  <rect x="9.5" y="16" width="4" height="4" rx="0.5" fill="#1a1712" opacity="0.7"/>
+  <!-- Window right -->
+  <rect x="18.5" y="16" width="4" height="4" rx="0.5" fill="#1a1712" opacity="0.7"/>
+  <!-- Chimney -->
+  <rect x="21" y="7" width="3" height="6" rx="0.5" fill="url(#gold)" opacity="0.7"/>
+</svg>

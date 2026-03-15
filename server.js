@@ -1098,7 +1098,7 @@ button:hover{opacity:.88;}
 </head>
 <body>
 <div class="card">
-  <div class="logo"><img src="/docs/favicon-32x32.png" alt="Family Panel icon"> Family<span>Panel</span></div>
+  <div class="logo"><img src="/favicon-32x32.png" alt="Family Panel icon"> Family<span>Panel</span></div>
   <div class="sub">Admin access is password protected.</div>
   ${lVersion ? `<div class="ver">v${lVersion}</div>` : ''}
   <label>Password</label>

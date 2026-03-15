@@ -1322,18 +1322,15 @@ select option { background: var(--surface); }
       </div>
     </div>
 
-    <!-- Weekly: day picker + show time -->
+    <!-- Weekly: day picker + show times -->
     <div id="cm-weekly-opts" style="display:none;">
       <label class="form-label">Show on days <span style="font-weight:400;color:var(--faint);">(leave all deselected to show every day)</span></label>
       <div id="cm-day-picker" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;margin-bottom:10px;"></div>
-      <div class="modal-row" style="align-items:center;gap:10px;">
-        <div class="form-group" style="flex:1;margin-bottom:0;">
-          <label class="form-label">Appears from time <span style="font-weight:400;color:var(--faint);">(optional)</span></label>
-          <input type="time" id="cm-show-time" style="background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:12px;padding:5px 8px;font-family:inherit;outline:none;width:100%;">
-        </div>
-        <div style="margin-top:18px;">
-          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('cm-show-time').value=''">Clear</button>
-        </div>
+      <label class="form-label">Appears from times <span style="font-weight:400;color:var(--faint);">(optional — chore hides until each time, then reappears)</span></label>
+      <div id="cm-show-times" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;"></div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input type="time" id="cm-new-show-time" style="background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:12px;padding:5px 8px;font-family:inherit;outline:none;">
+        <button class="btn btn-secondary btn-sm" onclick="addShowTime()">+ Add time</button>
       </div>
     </div>
 
@@ -1682,8 +1679,9 @@ function renderChores() {
       const times = ch.resetTimes?.length ? ch.resetTimes.join(', ') : '00:00';
       schedHint = `Resets at ${times}`;
     } else if (ch.recur === 'weekly') {
-      const days  = ch.days?.length ? ch.days.map(d => DOW_LABELS[d]).join(', ') : 'every day';
-      const showT = ch.showTime ? ` from ${ch.showTime}` : '';
+      const days      = ch.days?.length ? ch.days.map(d => DOW_LABELS[d]).join(', ') : 'every day';
+      const showTimes = ch.showTimes?.length ? ch.showTimes : (ch.showTime ? [ch.showTime] : []);
+      const showT     = showTimes.length ? ` from ${showTimes.join(', ')}` : '';
       schedHint = `On: ${days}${showT}`;
     } else if (ch.recur === 'monthly') {
       const weeks  = ch.weekOfMonth?.length ? ch.weekOfMonth.map(w => `Wk ${w}`).join(', ') : 'all month';
@@ -1838,7 +1836,9 @@ function openChoreModal(id) {
 
   _renderResetTimes(ch?.resetTimes || ['00:00']);
   _renderDayPicker(ch?.days || []);
-  document.getElementById('cm-show-time').value = ch?.showTime || '';
+  // Support both legacy scalar showTime and new showTimes array
+  const showTimesArr = ch?.showTimes || (ch?.showTime ? [ch.showTime] : []);
+  _renderShowTimes(showTimesArr);
   _renderWeekPicker(ch?.weekOfMonth || []);
   _renderMonthPicker('cm-month-picker',    ch?.months || []);
   _renderMonthPicker('cm-month-picker-yr', ch?.months || []);
@@ -1889,6 +1889,38 @@ function removeResetTime(t) {
 
 function _getResetTimes() {
   return [...document.getElementById('cm-reset-times').querySelectorAll('[data-time]')].map(el => el.dataset.time);
+}
+
+function _renderShowTimes(times) {
+  const wrap = document.getElementById('cm-show-times');
+  wrap.innerHTML = '';
+  (times || []).forEach(t => {
+    const chip = document.createElement('span');
+    chip.className = 'reset-time-chip';
+    chip.dataset.time = t;
+    chip.innerHTML = `${t} <button onclick="removeShowTime('${t}')" title="Remove">×</button>`;
+    wrap.appendChild(chip);
+  });
+}
+
+function addShowTime() {
+  const inp = document.getElementById('cm-new-show-time');
+  const val = inp.value;
+  if (!val) return;
+  const existing = _getShowTimes();
+  if (existing.includes(val)) return;
+  existing.push(val); existing.sort();
+  _renderShowTimes(existing);
+  inp.value = '';
+}
+
+function removeShowTime(t) {
+  const times = _getShowTimes().filter(x => x !== t);
+  _renderShowTimes(times);
+}
+
+function _getShowTimes() {
+  return [...document.getElementById('cm-show-times').querySelectorAll('[data-time]')].map(el => el.dataset.time);
 }
 
 function _renderDayPicker(selectedDays) {
@@ -1963,8 +1995,8 @@ async function saveChoreModal() {
   if (recur === 'daily') {
     entry.resetTimes = _getResetTimes();
   } else if (recur === 'weekly') {
-    entry.days     = _getSelectedDays();
-    entry.showTime = document.getElementById('cm-show-time').value || null;
+    entry.days      = _getSelectedDays();
+    entry.showTimes = _getShowTimes();   // array (may be empty)
   } else if (recur === 'monthly') {
     entry.weekOfMonth = _getSelectedWeeks();
     entry.months      = _getSelectedMonths('cm-month-picker');

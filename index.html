@@ -812,8 +812,11 @@ function isChoreVisible(ch) {
   const hm  = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
   if (ch.recur === 'weekly') {
-    const dayOk  = !ch.days?.length  || ch.days.includes(dow);
-    const timeOk = !ch.showTime      || hm >= ch.showTime || ch.done; // once visible, stays visible
+    const dayOk = !ch.days?.length || ch.days.includes(dow);
+    // Support both new showTimes array and legacy scalar showTime
+    const showTimes = ch.showTimes?.length ? ch.showTimes : (ch.showTime ? [ch.showTime] : []);
+    // Visible if no show times set, OR the chore is done, OR current time has passed ANY of the show times
+    const timeOk = !showTimes.length || ch.done || showTimes.some(t => hm >= t);
     return dayOk && timeOk;
   }
   if (ch.recur === 'monthly') {

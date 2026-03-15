@@ -1471,7 +1471,7 @@ function renderSection(id) {
   if (id === 'users')      renderUsers();
   if (id === 'chores')     renderChores();
   if (id === 'reminders')  renderReminders();
-  if (id === 'settings')   renderSettings();
+  if (id === 'settings')   { renderSettings(); checkForUpdate(); }
   if (id === 'connection') renderConnection();
   if (id === 'calendars')  renderCalendars();
   if (id === 'entities')   renderEntities();
@@ -2958,44 +2958,49 @@ function initTheme() {
 }
 
 async function checkForUpdate(manual = false) {
-  const statusEl  = document.getElementById('update-status');
-  const dotEl     = document.getElementById('update-dot');
-  const btnEl     = document.getElementById('update-check-btn');
-  if (statusEl) statusEl.innerHTML = '<span style="color:var(--muted)">Checking…</span>';
-  if (btnEl)    btnEl.disabled = true;
+  const statusEl = document.getElementById('update-status');
+  const dotEl    = document.getElementById('update-dot');
+  const btnEl    = document.getElementById('update-check-btn');
 
   try {
-    const [localRes, ghRes] = await Promise.all([
-      fetch('/api/version'),
-      fetch('https://api.github.com/repos/calebgab/home-assistant-family-panel/releases/latest', {
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--muted)">Checking…</span>';
+    if (btnEl)    btnEl.disabled = true;
+
+    // Get local version
+    let local = 'unknown';
+    try {
+      const vr = await fetch('/api/version');
+      if (vr.ok) { const vd = await vr.json(); local = vd.version || 'unknown'; }
+    } catch (ve) { console.warn('checkForUpdate: local version fetch failed', ve); }
+
+    // Get latest GitHub release
+    let latest = '', htmlUrl = 'https://github.com/calebgab/home-assistant-family-panel/releases/latest', body = '';
+    try {
+      const ghRes = await fetch('https://api.github.com/repos/calebgab/home-assistant-family-panel/releases/latest', {
         headers: { 'Accept': 'application/vnd.github+json' }
-      })
-    ]);
-
-    const { version: local } = await localRes.json();
-    const gh = await ghRes.json();
-    const latest   = (gh.tag_name || '').replace(/^v/, '');
-    const htmlUrl  = gh.html_url || 'https://github.com/calebgab/home-assistant-family-panel/releases/latest';
-    const body     = gh.body || '';
-
-    // Simple version comparison — works for CalVer (2026.3.14.1) and SemVer
-    const isNewer = latest && latest !== local && compareVersions(latest, local) > 0;
+      });
+      if (ghRes.ok) {
+        const gh = await ghRes.json();
+        latest  = (gh.tag_name || '').replace(/^v/, '');
+        htmlUrl = gh.html_url || htmlUrl;
+        body    = gh.body || '';
+      } else {
+        console.warn('checkForUpdate: GitHub returned', ghRes.status);
+      }
+    } catch (ghe) { console.warn('checkForUpdate: GitHub fetch failed', ghe); }
 
     if (!statusEl) return;
 
     if (!latest) {
-      statusEl.innerHTML = '<span style="color:var(--muted)">Could not reach GitHub — check your internet connection.</span>';
-    } else if (isNewer) {
-      // Show update banner
+      statusEl.innerHTML = `<span style="color:var(--muted)">Could not reach GitHub. You are running <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;">${escHtml(local)}</code></span>`;
+    } else if (compareVersions(latest, local) > 0) {
       const notesHtml = body
         ? `<div style="margin-top:10px;padding:10px 14px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--muted);line-height:1.6;white-space:pre-wrap;max-height:120px;overflow-y:auto;">${escHtml(body.slice(0, 800))}${body.length > 800 ? '…' : ''}</div>`
         : '';
       statusEl.innerHTML = `
         <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;">
           <div style="flex:1;min-width:0;">
-            <div style="font-weight:600;color:var(--text);margin-bottom:2px;">
-              🎉 Version <span style="color:var(--gold)">${escHtml(latest)}</span> is available
-            </div>
+            <div style="font-weight:600;color:var(--text);margin-bottom:2px;">🎉 Version <span style="color:var(--gold)">${escHtml(latest)}</span> is available</div>
             <div style="font-size:12px;color:var(--muted);">You are running <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;">${escHtml(local)}</code></div>
             ${notesHtml}
           </div>
@@ -3009,12 +3014,13 @@ async function checkForUpdate(manual = false) {
       statusEl.innerHTML = `
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="color:var(--green);font-size:16px;">✓</span>
-          <span style="color:var(--muted);">You're on the latest version <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;">${escHtml(local)}</code></span>
+          <span style="color:var(--muted);">You're on the latest version — <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;">${escHtml(local)}</code></span>
         </div>`;
       if (dotEl) dotEl.style.display = 'none';
     }
   } catch (e) {
-    if (statusEl) statusEl.innerHTML = '<span style="color:var(--muted)">Update check failed — ' + escHtml(e.message) + '</span>';
+    console.error('checkForUpdate error:', e);
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--red);">Update check failed — ${escHtml(e.message)}</span>`;
   } finally {
     if (btnEl) btnEl.disabled = false;
   }

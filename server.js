@@ -67,6 +67,7 @@ function getStateEntities() {
   (d.topbar_buttons  || []).forEach(b => { if (b.entity) ids.add(b.entity); });
   (d.control_buttons || []).forEach(b => { if (b.entity) ids.add(b.entity); });
   (d.sensors         || []).forEach(s => { if (s.entity) ids.add(s.entity); });
+  ((d.custom_dashboard || {}).widgets || []).forEach(w => { if (w.entity) ids.add(w.entity); });
   if (ids.size) return [...ids];
   return (d.state_entities || STATE_ENTITIES_STATIC).map(e => typeof e === 'string' ? e : e.id);
 }

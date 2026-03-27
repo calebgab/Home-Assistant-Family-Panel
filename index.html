@@ -573,7 +573,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
       style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-size:12px;padding:4px 12px;cursor:pointer;transition:all var(--ease);align-items:center;font-weight:600;letter-spacing:.3px;"
       onmouseover="this.style.borderColor='var(--gold-mid)';this.style.color='var(--text)'"
       onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
-      My Dashboard
+      Home Control
     </button>
 
     <button id="shop-btn" onclick="openShopDrawer()" title="Shopping List"
@@ -882,9 +882,10 @@ setInterval(updateClock, 1000);
 // ═══════════════════════════════════════════════════════════
 function setHAStatus(s) {
   const el = document.getElementById('ha-status');
-  if (s === 'ok')      { el.className = 'ok';      el.textContent = '● HA Connected'; }
-  else if (s === 'err'){ el.className = 'error';   el.textContent = '✕ HA Offline'; }
-  else                 { el.className = 'loading';  el.textContent = '↻ HA Connecting…'; }
+  if (s === 'ok') { el.style.display = 'none'; return; }
+  el.style.display = '';
+  if (s === 'err') { el.className = 'error';   el.textContent = '✕ HA Offline'; }
+  else             { el.className = 'loading';  el.textContent = '↻ HA Connecting…'; }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1074,6 +1075,7 @@ async function doAlarmAction(service) {
         const fresh = await fetchHAStates();
         Object.assign(haStates, fresh);
         renderSensors();
+        updateCDWidgetStates();
         setHAStatus('ok');
       } catch {}
     }, 1200);
@@ -3011,6 +3013,7 @@ async function init() {
 
     // Render everything — chores first so presence slots exist when renderPresence runs
     renderTopbarBtns();
+    renderCustomDashBtn();
     renderControls();
     renderSensors();
     renderChores();
@@ -3138,10 +3141,9 @@ init();
 #cd-popup-overlay.open{background:rgba(0,0,0,.65);backdrop-filter:blur(8px);}
 #cd-popup-sheet{background:var(--bg);flex:1;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,1,.45,1);margin-top:60px;border-radius:16px 16px 0 0;overflow:hidden;}
 #cd-popup-overlay.open #cd-popup-sheet{transform:translateY(0);}
-#cd-popup-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 12px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
+#cd-popup-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:10px auto 0;flex-shrink:0;cursor:pointer;}
+#cd-popup-header{display:flex;align-items:center;justify-content:space-between;padding:10px 20px 12px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
 #cd-popup-title{font-size:16px;font-weight:700;color:var(--text);}
-#cd-popup-close{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:14px;padding:5px 12px;cursor:pointer;font-family:inherit;transition:all var(--ease);}
-#cd-popup-close:hover{border-color:var(--gold-mid);color:var(--text);}
 #cd-popup-body{flex:1;overflow:auto;padding:16px;display:flex;align-items:center;justify-content:center;}
 #cd-popup-grid{position:relative;}
 .cdpw{position:absolute;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:8px;transition:border-color .18s,background .18s;user-select:none;}
@@ -3152,11 +3154,11 @@ init();
 .cdpw-state-on{background:rgba(232,168,64,.2);color:var(--gold);}
 </style>
 
-<div id="cd-popup-overlay">
+<div id="cd-popup-overlay" onclick="closeCustomDashPopup(event)">
   <div id="cd-popup-sheet">
+    <div id="cd-popup-handle" onclick="closeCustomDashPopup()"></div>
     <div id="cd-popup-header">
-      <div id="cd-popup-title">My Dashboard</div>
-      <button id="cd-popup-close" onclick="closeCustomDashPopup()">Close</button>
+      <div id="cd-popup-title">Home Control</div>
     </div>
     <div id="cd-popup-body">
       <div id="cd-popup-grid"></div>
@@ -3173,7 +3175,7 @@ function renderCustomDashBtn() {
   if (!btn) return;
   if (cd && cd.enabled && cd.widgets && cd.widgets.length) {
     btn.style.display = 'flex';
-    btn.textContent   = cd.label || 'My Dashboard';
+    btn.textContent   = cd.label || 'Home Control';
   } else {
     btn.style.display = 'none';
   }
@@ -3184,19 +3186,21 @@ function openCustomDashPopup() {
   var overlay = document.getElementById('cd-popup-overlay');
   overlay.style.display = 'flex';
   var cd = D && D.custom_dashboard;
-  document.getElementById('cd-popup-title').textContent = (cd && cd.label) || 'My Dashboard';
+  document.getElementById('cd-popup-title').textContent = (cd && cd.label) || 'Home Control';
   requestAnimationFrame(function() {
     requestAnimationFrame(function() { overlay.classList.add('open'); });
   });
   document.body.style.overflow = 'hidden';
   renderCustomDashPopup();
+  fetchHAStates().then(function(s) { Object.assign(haStates, s); updateCDWidgetStates(); }).catch(function(){});
   _cdPollTimer = setInterval(function() {
     if (!_cdPopupOpen) return;
     fetchHAStates().then(function(s) { Object.assign(haStates, s); updateCDWidgetStates(); }).catch(function(){});
   }, 15000);
 }
 
-function closeCustomDashPopup() {
+function closeCustomDashPopup(e) {
+  if (e && e.target !== document.getElementById('cd-popup-overlay')) return;
   _cdPopupOpen = false;
   clearInterval(_cdPollTimer);
   var overlay = document.getElementById('cd-popup-overlay');
@@ -3219,7 +3223,7 @@ function renderCustomDashPopup() {
   wrap.style.cssText = 'position:relative;width:' + (cols*cellW) + 'px;height:' + (rows*cellH) + 'px;';
   wrap.innerHTML = '';
   if (!widgets.length) {
-    wrap.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:40px;">No widgets configured yet.<br>Add some in Admin &rarr; My Dashboard.</div>';
+    wrap.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:40px;">No widgets configured yet.<br>Add some in Admin &rarr; Home Control.</div>';
     return;
   }
   widgets.forEach(function(w) { wrap.appendChild(makeCDPopupWidget(w, cellW, cellH, cols, rows)); });
@@ -3350,15 +3354,26 @@ function applyCDWidgetState(el, w, ent) {
 async function handleCDWidgetTap(w) {
   if (!w.entity) return;
   var state = haStates[w.entity] && haStates[w.entity].state;
-  var dom   = w.domain || w.entity.split('.')[0];
-  function refresh() { setTimeout(function() { fetchHAStates().then(function(s){ Object.assign(haStates,s); updateCDWidgetStates(); }).catch(function(){}); }, 800); }
+  var dom   = w.entity.split('.')[0];
+  function confirm() { setTimeout(function() { fetchHAStates().then(function(s){ Object.assign(haStates,s); updateCDWidgetStates(); }).catch(function(){}); }, 800); }
+  function optimistic(newState) {
+    if (!haStates[w.entity]) haStates[w.entity] = {};
+    haStates[w.entity] = Object.assign({}, haStates[w.entity], {state: newState});
+    updateCDWidgetStates();
+  }
   if (w.type === 'scene') { try { await callService('scene', 'turn_on', {entity_id: w.entity}); } catch(e) {} return; }
-  if (w.type === 'lock')  { try { await callService('lock', state==='locked'?'unlock':'lock', {entity_id:w.entity}); } catch(e) {} refresh(); return; }
+  if (w.type === 'lock')  {
+    var newLockState = state === 'locked' ? 'unlocked' : 'locked';
+    optimistic(newLockState);
+    try { await callService('lock', state==='locked'?'unlock':'lock', {entity_id:w.entity}); } catch(e) {}
+    confirm(); return;
+  }
   if (w.type === 'alarm') { openAlarmModal({entity:w.entity, label:w.label, requirePin:!!w.requirePin}); return; }
   var isOn = ['on','open','playing'].indexOf(state) >= 0;
   var svc  = isOn ? (w.off_service||'turn_off') : (w.on_service||'turn_on');
+  optimistic(isOn ? 'off' : 'on');
   try { await callService(dom, svc, {entity_id: w.entity}); } catch(e) {}
-  refresh();
+  confirm();
 }
 
 async function cdMediaCmd(service, entityId) {

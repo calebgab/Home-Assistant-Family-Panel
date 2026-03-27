@@ -2769,9 +2769,30 @@ function startIdleDetection() {
 }
 
 // ── Enter / exit ─────────────────────────────────────────
+function _closeAllOverlays() {
+  // Close chores overlay
+  const choresOv = document.getElementById('chores-overlay');
+  if (choresOv?.classList.contains('open')) {
+    choresOv.classList.remove('open');
+    document.body.style.overflow = '';
+    setTimeout(() => { choresOv.style.display = 'none'; }, 300);
+  }
+  // Close shopping drawer
+  if (_shopOpen) closeShopDrawer();
+  // Close chore log
+  const logOv = document.getElementById('log-overlay');
+  if (logOv?.style.display !== 'none') closeChoreLog();
+  // Close alarm modal
+  const alarmOv = document.getElementById('alarm-overlay');
+  if (alarmOv?.style.display !== 'none') closeAlarmModal();
+  // Close any open modals (.modal-overlay)
+  document.querySelectorAll('.modal-overlay.open').forEach(o => o.classList.remove('open'));
+}
+
 async function enterPhotoFrame() {
   clearTimeout(pfIdleTimer);
   if (pfActive) return;
+  _closeAllOverlays();
 
   // Fetch photo list — log detailed errors so browser console tells us what's wrong
   let assets = [];

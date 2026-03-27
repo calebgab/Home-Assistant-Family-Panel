@@ -17,3 +17,8 @@ Thumbs.db
 
 # ── Legacy / unused ──────────────────────────────────────
 server.py
+server.js.bak
+index.html.bak
+admin.html.bak
+.gitignore
+server.js.bak2

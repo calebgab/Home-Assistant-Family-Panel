@@ -569,6 +569,13 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
     <button id="theme-btn" onclick="toggleTheme()" title="Toggle light/dark mode" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-size:14px;padding:4px 10px;cursor:pointer;transition:all var(--ease);line-height:1;" onmouseover="this.style.borderColor='var(--gold-mid)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">🌙</button>
     <button id="frame-btn" onclick="enterPhotoFrame()" title="Photo frame" style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-size:14px;padding:4px 10px;cursor:pointer;transition:all var(--ease);line-height:1;" onmouseover="this.style.borderColor='var(--gold-mid)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">🖼️</button>
     <div id="topbar-btns"></div>
+    <button id="cd-popup-btn" onclick="openCustomDashPopup()"
+      style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-size:12px;padding:4px 12px;cursor:pointer;transition:all var(--ease);align-items:center;font-weight:600;letter-spacing:.3px;"
+      onmouseover="this.style.borderColor='var(--gold-mid)';this.style.color='var(--text)'"
+      onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+      My Dashboard
+    </button>
+
     <button id="shop-btn" onclick="openShopDrawer()" title="Shopping List"
       style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-size:14px;padding:4px 12px;cursor:pointer;transition:all var(--ease);line-height:1;gap:5px;align-items:center;"
       onmouseover="this.style.borderColor='var(--gold-mid)';this.style.color='var(--text)'"
@@ -927,6 +934,7 @@ async function toggleControl(btn, btnEl) {
     D.controls = D.controls || {};
     D.controls[btn.id] = !currentlyOn;
     await pushData();
+    renderCustomDashBtn();
     renderTopbarBtns();
     renderControls();
     return;
@@ -1817,6 +1825,7 @@ document.addEventListener('keydown', e => {
     if (_shopOpen) closeShopDrawer();
     if (document.getElementById('log-overlay').style.display !== 'none') closeChoreLog();
     if (document.getElementById('alarm-overlay').style.display !== 'none') closeAlarmModal();
+    if (typeof _cdPopupOpen !== 'undefined' && _cdPopupOpen) closeCustomDashPopup();
   }
 });
 
@@ -2689,6 +2698,7 @@ async function pollData() {
     const fresh = await fetchData();
     if (JSON.stringify(fresh) !== JSON.stringify(D)) {
       D = fresh;
+      renderCustomDashBtn();
       renderChores();
       renderReminders();
       // Re-apply theme in case settings changed
@@ -2789,9 +2799,26 @@ function _closeAllOverlays() {
   document.querySelectorAll('.modal-overlay.open').forEach(o => o.classList.remove('open'));
 }
 
+function _closeAllOverlays() {
+  var choresOv = document.getElementById('chores-overlay');
+  if (choresOv && choresOv.classList.contains('open')) {
+    choresOv.classList.remove('open');
+    document.body.style.overflow = '';
+    setTimeout(function() { choresOv.style.display = 'none'; }, 300);
+  }
+  if (typeof _shopOpen !== 'undefined' && _shopOpen) closeShopDrawer();
+  var logOv = document.getElementById('log-overlay');
+  if (logOv && logOv.style.display !== 'none') closeChoreLog();
+  var alarmOv = document.getElementById('alarm-overlay');
+  if (alarmOv && alarmOv.style.display !== 'none') closeAlarmModal();
+  if (typeof _cdPopupOpen !== 'undefined' && _cdPopupOpen) closeCustomDashPopup();
+  document.querySelectorAll('.modal-overlay.open').forEach(function(o) { o.classList.remove('open'); });
+}
+
 async function enterPhotoFrame() {
   clearTimeout(pfIdleTimer);
   if (pfActive) return;
+  _closeAllOverlays();
   _closeAllOverlays();
 
   // Fetch photo list — log detailed errors so browser console tells us what's wrong
@@ -3104,6 +3131,247 @@ init();
   <div id="shop-body"></div>
   <div id="shop-status"></div>
 </div>
+
+<!-- ====== CUSTOM DASHBOARD POPUP ====== -->
+<style>
+#cd-popup-overlay{display:none;position:fixed;inset:0;z-index:250;background:rgba(0,0,0,0);backdrop-filter:blur(0px);transition:background .25s ease,backdrop-filter .25s ease;flex-direction:column;}
+#cd-popup-overlay.open{background:rgba(0,0,0,.65);backdrop-filter:blur(8px);}
+#cd-popup-sheet{background:var(--bg);flex:1;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,1,.45,1);margin-top:60px;border-radius:16px 16px 0 0;overflow:hidden;}
+#cd-popup-overlay.open #cd-popup-sheet{transform:translateY(0);}
+#cd-popup-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 12px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
+#cd-popup-title{font-size:16px;font-weight:700;color:var(--text);}
+#cd-popup-close{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:14px;padding:5px 12px;cursor:pointer;font-family:inherit;transition:all var(--ease);}
+#cd-popup-close:hover{border-color:var(--gold-mid);color:var(--text);}
+#cd-popup-body{flex:1;overflow:auto;padding:16px;display:flex;align-items:center;justify-content:center;}
+#cd-popup-grid{position:relative;}
+.cdpw{position:absolute;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:8px;transition:border-color .18s,background .18s;user-select:none;}
+.cdpw-interactive{cursor:pointer;}
+.cdpw-interactive:hover{border-color:var(--gold-mid);background:var(--surface2);}
+.cdpw-on{border-color:var(--gold-mid) !important;background:var(--gold-dim) !important;}
+.cdpw-state{font-size:10px;padding:2px 8px;border-radius:10px;background:var(--surface2);color:var(--muted);font-weight:600;}
+.cdpw-state-on{background:rgba(232,168,64,.2);color:var(--gold);}
+</style>
+
+<div id="cd-popup-overlay">
+  <div id="cd-popup-sheet">
+    <div id="cd-popup-header">
+      <div id="cd-popup-title">My Dashboard</div>
+      <button id="cd-popup-close" onclick="closeCustomDashPopup()">Close</button>
+    </div>
+    <div id="cd-popup-body">
+      <div id="cd-popup-grid"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+var _cdPopupOpen = false, _cdPollTimer = null;
+
+function renderCustomDashBtn() {
+  var cd  = D && D.custom_dashboard;
+  var btn = document.getElementById('cd-popup-btn');
+  if (!btn) return;
+  if (cd && cd.enabled && cd.widgets && cd.widgets.length) {
+    btn.style.display = 'flex';
+    btn.textContent   = cd.label || 'My Dashboard';
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+function openCustomDashPopup() {
+  _cdPopupOpen = true;
+  var overlay = document.getElementById('cd-popup-overlay');
+  overlay.style.display = 'flex';
+  var cd = D && D.custom_dashboard;
+  document.getElementById('cd-popup-title').textContent = (cd && cd.label) || 'My Dashboard';
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() { overlay.classList.add('open'); });
+  });
+  document.body.style.overflow = 'hidden';
+  renderCustomDashPopup();
+  _cdPollTimer = setInterval(function() {
+    if (!_cdPopupOpen) return;
+    fetchHAStates().then(function(s) { Object.assign(haStates, s); updateCDWidgetStates(); }).catch(function(){});
+  }, 15000);
+}
+
+function closeCustomDashPopup() {
+  _cdPopupOpen = false;
+  clearInterval(_cdPollTimer);
+  var overlay = document.getElementById('cd-popup-overlay');
+  overlay.classList.remove('open');
+  document.body.style.overflow = '';
+  setTimeout(function() { overlay.style.display = 'none'; }, 300);
+}
+
+function renderCustomDashPopup() {
+  var cd   = D && D.custom_dashboard;
+  var wrap = document.getElementById('cd-popup-grid');
+  if (!cd || !wrap) return;
+  var widgets = cd.widgets || [];
+  var cols = cd.cols || 12, rows = cd.rows || 8;
+  var bodyEl = document.getElementById('cd-popup-body');
+  var availW = bodyEl.clientWidth  - 32;
+  var availH = bodyEl.clientHeight - 32;
+  var cellW  = Math.max(50, Math.floor(availW / cols));
+  var cellH  = Math.max(50, Math.min(90, Math.floor(availH / rows)));
+  wrap.style.cssText = 'position:relative;width:' + (cols*cellW) + 'px;height:' + (rows*cellH) + 'px;';
+  wrap.innerHTML = '';
+  if (!widgets.length) {
+    wrap.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:40px;">No widgets configured yet.<br>Add some in Admin &rarr; My Dashboard.</div>';
+    return;
+  }
+  widgets.forEach(function(w) { wrap.appendChild(makeCDPopupWidget(w, cellW, cellH, cols, rows)); });
+  updateCDWidgetStates();
+}
+
+var CD_POPUP_EMOJIS = {
+  button:'\uD83D\uDD18', light:'\uD83D\uDCA1', lock:'\uD83D\uDD12', cover:'\uD83E\uDE9F',
+  sensor:'\uD83D\uDCCA', climate:'\uD83C\uDF21\uFE0F', camera:'\uD83D\uDCF7', media:'\uD83C\uDFB5',
+  alarm:'\uD83D\uDEA8', scene:'\uD83C\uDFAC', weather:'\u26C5', person:'\uD83D\uDC64',
+};
+
+function makeCDPopupWidget(w, cellW, cellH, cols, rows) {
+  var col = Math.max(1, Math.min(w.col||1, cols));
+  var row = Math.max(1, Math.min(w.row||1, rows));
+  var ww  = Math.max(1, Math.min(w.w||2, cols-col+1));
+  var hh  = Math.max(1, Math.min(w.h||1, rows-row+1));
+  var big = hh >= 2 || ww >= 3;
+  var interactive = ['button','light','lock','cover','climate','alarm','scene','media'].indexOf(w.type) >= 0;
+  var el  = document.createElement('div');
+  el.id   = 'cdpw-' + w.id;
+  el.className = 'cdpw' + (interactive ? ' cdpw-interactive' : '');
+  el.style.left   = (col-1)*cellW + 'px';
+  el.style.top    = (row-1)*cellH + 'px';
+  el.style.width  = (ww*cellW-6) + 'px';
+  el.style.height = (hh*cellH-6) + 'px';
+  var iconS  = big ? '26px' : '18px';
+  var labelS = big ? '13px' : '10px';
+  var valS   = big ? '22px' : '14px';
+  var emoji  = CD_POPUP_EMOJIS[w.type] || '\uD83D\uDD18';
+  var inner  = '';
+  if (w.type === 'sensor') {
+    var sIcon = {temperature:'\uD83C\uDF21\uFE0F', humidity:'\uD83D\uDCA7', door:'\uD83D\uDEAA', power:'\u26A1'}[w.sensorType] || '\uD83D\uDCCA';
+    inner = '<div style="font-size:' + iconS + '">' + sIcon + '</div>'
+      + '<div class="cdpw-value" style="font-family:Nunito,sans-serif;font-size:' + valS + ';font-weight:700;color:var(--text);">\u2014</div>'
+      + '<div style="font-size:' + labelS + ';color:var(--muted);text-align:center;">' + w.label + '</div>';
+  } else if (w.type === 'camera') {
+    inner = '<img class="cdpw-camera-img" src="/api/ha/camera/' + encodeURIComponent(w.entity) + '"'
+      + ' style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.style.opacity=\'.3\'">'
+      + '<div style="position:absolute;bottom:6px;left:0;right:0;text-align:center;font-size:' + labelS + ';color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.8);">' + w.label + '</div>';
+  } else if (w.type === 'weather') {
+    inner = '<div class="cdpw-weather-icon" style="font-size:' + (big?'32px':'22px') + '">\u26C5</div>'
+      + '<div class="cdpw-weather-temp" style="font-family:Nunito,sans-serif;font-size:' + (big?'26px':'16px') + ';font-weight:700;color:var(--text);">\u2014\xB0</div>'
+      + '<div class="cdpw-weather-desc" style="font-size:' + labelS + ';color:var(--muted);text-align:center;">\u2014</div>'
+      + '<div style="font-size:' + (big?'10px':'8px') + ';color:var(--faint);">' + w.label + '</div>';
+  } else if (w.type === 'media') {
+    inner = '<div style="font-size:' + iconS + '">' + emoji + '</div>'
+      + '<div class="cdpw-media-title" style="font-size:' + labelS + ';font-weight:600;color:var(--text);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">Not playing</div>'
+      + '<div class="cdpw-media-artist" style="font-size:' + (big?'10px':'8px') + ';color:var(--muted);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;"></div>';
+    if (big) {
+      inner += '<div style="display:flex;gap:6px;">'
+        + '<button onclick="event.stopPropagation();cdMediaCmd(\'media_previous_track\',\'' + w.entity + '\')" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--muted);padding:3px 8px;cursor:pointer;font-size:13px;">\u23EE</button>'
+        + '<button onclick="event.stopPropagation();cdMediaPlayPause(\'' + w.entity + '\')" class="cdpw-playpause" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--muted);padding:3px 10px;cursor:pointer;font-size:13px;">\u25B6</button>'
+        + '<button onclick="event.stopPropagation();cdMediaCmd(\'media_next_track\',\'' + w.entity + '\')" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--muted);padding:3px 8px;cursor:pointer;font-size:13px;">\u23ED</button>'
+        + '</div>'
+        + '<div style="font-size:' + (big?'10px':'8px') + ';color:var(--faint);">' + w.label + '</div>';
+    }
+  } else if (w.type === 'person') {
+    inner = '<div class="cdpw-person-dot" style="width:12px;height:12px;border-radius:50%;background:var(--muted);flex-shrink:0;"></div>'
+      + '<div class="cdpw-value" style="font-size:' + labelS + ';font-weight:600;color:var(--text);">\u2014</div>'
+      + '<div style="font-size:' + (big?'11px':'9px') + ';color:var(--muted);">' + w.label + '</div>';
+  } else if (w.type === 'climate') {
+    inner = '<div style="font-size:' + iconS + '">\uD83C\uDF21\uFE0F</div>'
+      + '<div class="cdpw-value" style="font-family:Nunito,sans-serif;font-size:' + valS + ';font-weight:700;color:var(--text);">\u2014\xB0</div>'
+      + '<div class="cdpw-climate-mode" style="font-size:' + (big?'11px':'9px') + ';color:var(--muted);">\u2014</div>'
+      + '<div style="font-size:' + (big?'11px':'9px') + ';color:var(--faint);">' + w.label + '</div>';
+  } else {
+    inner = '<div class="cdpw-icon" style="font-size:' + iconS + '">' + emoji + '</div>'
+      + '<div style="font-size:' + labelS + ';font-weight:600;color:var(--text);text-align:center;">' + w.label + '</div>'
+      + '<div class="cdpw-state" style="font-size:' + (big?'11px':'9px') + '">\u2014</div>';
+  }
+  el.innerHTML = inner;
+  if (interactive) {
+    el.addEventListener('click', function(){ handleCDWidgetTap(w); });
+  }
+  return el;
+}
+
+function updateCDWidgetStates() {
+  var cd = D && D.custom_dashboard;
+  if (!cd || !cd.widgets) return;
+  cd.widgets.forEach(function(w) {
+    var el  = document.getElementById('cdpw-' + w.id);
+    if (!el || !w.entity) return;
+    var ent = haStates[w.entity];
+    if (!ent) return;
+    applyCDWidgetState(el, w, ent);
+  });
+}
+
+function applyCDWidgetState(el, w, ent) {
+  var state = ent.state, attr = ent.attributes || {};
+  if (w.type === 'sensor') {
+    var v = el.querySelector('.cdpw-value'); if (!v) return;
+    if (w.sensorType === 'temperature') v.textContent = parseFloat(state).toFixed(1) + '\xB0';
+    else if (w.sensorType === 'humidity') v.textContent = Math.round(parseFloat(state)) + '%';
+    else if (w.sensorType === 'door') v.textContent = state === 'on' ? 'Open' : 'Closed';
+    else v.textContent = attr.unit_of_measurement ? state + ' ' + attr.unit_of_measurement : state;
+  } else if (w.type === 'climate') {
+    var cv = el.querySelector('.cdpw-value'), cm = el.querySelector('.cdpw-climate-mode');
+    if (cv) cv.textContent = attr.current_temperature != null ? attr.current_temperature + '\xB0' : state;
+    if (cm) cm.textContent = attr.hvac_action || attr.hvac_mode || state;
+  } else if (w.type === 'media') {
+    var mt = el.querySelector('.cdpw-media-title'), ma = el.querySelector('.cdpw-media-artist'), pp = el.querySelector('.cdpw-playpause');
+    if (mt) mt.textContent = attr.media_title  || (state === 'playing' ? 'Playing' : 'Not playing');
+    if (ma) ma.textContent = attr.media_artist || attr.app_name || '';
+    if (pp) pp.textContent = state === 'playing' ? '\u23F8' : '\u25B6';
+  } else if (w.type === 'weather') {
+    var WX = {sunny:'\u2600\uFE0F','clear-night':'\uD83C\uDF19',partlycloudy:'\u26C5',cloudy:'\u2601\uFE0F',fog:'\uD83C\uDF2B\uFE0F',rainy:'\uD83C\uDF27\uFE0F',pouring:'\uD83C\uDF27\uFE0F',snowy:'\u2744\uFE0F',lightning:'\u26C8\uFE0F','lightning-rainy':'\u26C8\uFE0F'};
+    var wi = el.querySelector('.cdpw-weather-icon'), wt2 = el.querySelector('.cdpw-weather-temp'), wd = el.querySelector('.cdpw-weather-desc');
+    if (wi)  wi.textContent  = WX[state] || '\uD83C\uDF21\uFE0F';
+    if (wt2) wt2.textContent = attr.temperature != null ? Math.round(attr.temperature) + '\xB0' : '\u2014\xB0';
+    if (wd)  wd.textContent  = state.replace(/-/g, ' ');
+  } else if (w.type === 'person') {
+    var dot = el.querySelector('.cdpw-person-dot'), sv = el.querySelector('.cdpw-value');
+    if (dot) dot.style.background = state === 'home' ? 'var(--green)' : 'var(--muted)';
+    if (sv)  sv.textContent = state === 'home' ? 'Home' : 'Away';
+  } else {
+    var badge = el.querySelector('.cdpw-state'), icon = el.querySelector('.cdpw-icon');
+    var isOn  = ['on','locked','open','armed_home','armed_away','armed_night','playing'].indexOf(state) >= 0;
+    if (isOn) { el.classList.add('cdpw-on');    if (badge) badge.classList.add('cdpw-state-on'); }
+    else      { el.classList.remove('cdpw-on'); if (badge) badge.classList.remove('cdpw-state-on'); }
+    if (badge) badge.textContent = state.replace(/_/g, ' ');
+    if (icon && w.type === 'lock') icon.textContent = state === 'locked' ? '\uD83D\uDD12' : '\uD83D\uDD13';
+  }
+}
+
+async function handleCDWidgetTap(w) {
+  if (!w.entity) return;
+  var state = haStates[w.entity] && haStates[w.entity].state;
+  var dom   = w.domain || w.entity.split('.')[0];
+  function refresh() { setTimeout(function() { fetchHAStates().then(function(s){ Object.assign(haStates,s); updateCDWidgetStates(); }).catch(function(){}); }, 800); }
+  if (w.type === 'scene') { try { await callService('scene', 'turn_on', {entity_id: w.entity}); } catch(e) {} return; }
+  if (w.type === 'lock')  { try { await callService('lock', state==='locked'?'unlock':'lock', {entity_id:w.entity}); } catch(e) {} refresh(); return; }
+  if (w.type === 'alarm') { openAlarmModal({entity:w.entity, label:w.label, requirePin:!!w.requirePin}); return; }
+  var isOn = ['on','open','playing'].indexOf(state) >= 0;
+  var svc  = isOn ? (w.off_service||'turn_off') : (w.on_service||'turn_on');
+  try { await callService(dom, svc, {entity_id: w.entity}); } catch(e) {}
+  refresh();
+}
+
+async function cdMediaCmd(service, entityId) {
+  try { await callService('media_player', service, {entity_id: entityId}); } catch(e) {}
+  setTimeout(function() { fetchHAStates().then(function(s){ Object.assign(haStates,s); updateCDWidgetStates(); }).catch(function(){}); }, 500);
+}
+
+async function cdMediaPlayPause(entityId) {
+  var playing = haStates[entityId] && haStates[entityId].state === 'playing';
+  try { await callService('media_player', playing ? 'media_pause' : 'media_play', {entity_id: entityId}); } catch(e) {}
+  setTimeout(function() { fetchHAStates().then(function(s){ Object.assign(haStates,s); updateCDWidgetStates(); }).catch(function(){}); }, 500);
+}
+</script>
 
 </body>
 </html>

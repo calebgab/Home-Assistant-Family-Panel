@@ -629,6 +629,11 @@ select option { background: var(--surface); }
         <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>
         Photo Frame
       </button>
+      <button class="sidebar-btn" onclick="showSection('customdash')">
+        <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/></svg>
+        My Dashboard
+      </button>
+
       <button class="sidebar-btn" onclick="showSection('reset')">
         <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
         Reset Chores
@@ -1063,6 +1068,48 @@ select option { background: var(--surface); }
       </div>
     </div>
 
+    <!-- ══════════════ CUSTOM DASHBOARD ══════════════ -->
+    <div id="section-customdash" class="section">
+      <div class="page-title">My Dashboard</div>
+      <div class="page-sub">Design a custom popup panel. Drag widget types from the right onto the grid — they snap to cells. Click a placed widget to configure its HA entity. Enable the top-menu button to make it accessible from the dashboard.</div>
+
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 14px;">
+          <input type="checkbox" id="cd-enabled" onchange="saveCDMeta()" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer;">
+          <span style="font-size:13px;font-weight:600;color:var(--text);">Show button in top menu</span>
+        </label>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:12px;color:var(--muted);">Label:</span>
+          <input type="text" id="cd-label" value="My Dashboard" oninput="saveCDMeta()" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:5px 10px;width:140px;outline:none;font-family:inherit;">
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:12px;color:var(--muted);">Cols:</span>
+          <select id="cd-cols" onchange="resizeCDGrid()" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:4px 8px;outline:none;cursor:pointer;font-family:inherit;">
+            <option value="6">6</option><option value="8">8</option><option value="10">10</option><option value="12" selected>12</option><option value="16">16</option>
+          </select>
+          <span style="font-size:12px;color:var(--muted);">Rows:</span>
+          <select id="cd-rows" onchange="resizeCDGrid()" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:4px 8px;outline:none;cursor:pointer;font-family:inherit;">
+            <option value="4">4</option><option value="6">6</option><option value="8" selected>8</option><option value="10">10</option><option value="12">12</option>
+          </select>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="clearCDGrid()" style="margin-left:auto;">Clear All</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 190px;gap:14px;align-items:start;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+          <div id="cd-grid-wrap" style="padding:10px;position:relative;">
+            <div id="cd-grid" style="position:relative;background:var(--surface2);border:1px solid var(--border);border-radius:6px;overflow:visible;"></div>
+          </div>
+          <div style="padding:4px 12px 10px;font-size:10px;color:var(--faint);text-align:center;">Drag from palette to place &middot; Click widget to configure &middot; Drag corner to resize &middot; Drag widget to reposition</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;position:sticky;top:74px;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--faint);margin-bottom:8px;">Widgets</div>
+          <div id="cd-palette" style="display:flex;flex-direction:column;gap:5px;"></div>
+          <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:10px;color:var(--faint);line-height:1.5;">Drag a type onto the grid. Click a placed widget to set its entity.</div>
+        </div>
+      </div>
+    </div>
+
     <!-- ══════════════ RESET ══════════════ -->
     <div id="section-reset" class="section">
       <div class="page-title">Reset Chores</div>
@@ -1417,6 +1464,56 @@ select option { background: var(--surface); }
   </div>
 </div>
 
+<div class="modal-overlay" id="cd-widget-modal">
+  <div class="modal" style="width:440px;">
+    <h3 id="cd-widget-modal-title">Configure Widget</h3>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label class="form-label">Display Label</label>
+      <input type="text" id="cd-wm-label" placeholder="e.g. Front Door">
+    </div>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label class="form-label">HA Entity ID</label>
+      <input type="text" id="cd-wm-entity" placeholder="e.g. lock.front_door" oninput="onCDEntityInput(this.value)">
+      <div id="cd-wm-entity-hint" style="margin-top:5px;font-size:11px;min-height:14px;"></div>
+    </div>
+    <div id="cd-wm-svc-wrap" style="display:none;">
+      <div class="form-label" style="margin-bottom:6px;">Services</div>
+      <div style="display:flex;gap:10px;margin-bottom:12px;">
+        <div class="form-group" style="flex:1;"><label class="form-label">ON / Activate</label><input type="text" id="cd-wm-on-svc" placeholder="turn_on"></div>
+        <div class="form-group" style="flex:1;"><label class="form-label">OFF</label><input type="text" id="cd-wm-off-svc" placeholder="turn_off"></div>
+      </div>
+    </div>
+    <div id="cd-wm-sensor-wrap" style="display:none;margin-bottom:12px;">
+      <label class="form-label">Sensor Type</label>
+      <select id="cd-wm-sensor-type">
+        <option value="generic">Generic (raw state)</option>
+        <option value="temperature">Temperature (deg C)</option>
+        <option value="humidity">Humidity (%)</option>
+        <option value="door">Door / Window</option>
+        <option value="power">Power (W/kW)</option>
+      </select>
+    </div>
+    <div id="cd-wm-icon-wrap" style="display:none;margin-bottom:12px;">
+      <div class="form-label" style="margin-bottom:6px;">Icon</div>
+      <div id="cd-wm-icon-picker" style="display:flex;flex-wrap:wrap;gap:5px;"></div>
+      <input type="hidden" id="cd-wm-icon">
+    </div>
+    <div class="modal-row">
+      <div class="form-group"><label class="form-label">Width (cols)</label>
+        <select id="cd-wm-w"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option><option value="6">6</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Height (rows)</label>
+        <select id="cd-wm-h"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="deleteCDWidget()">Delete</button>
+      <button class="btn btn-secondary" onclick="closeModal('cd-widget-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCDWidget()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div id="toast"></div>
 
@@ -1477,6 +1574,7 @@ function renderSection(id) {
   if (id === 'calendars')  renderCalendars();
   if (id === 'entities')   renderEntities();
   if (id === 'appearance') renderAppearance();
+  if (id === 'customdash') renderCDSection();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -3023,6 +3121,303 @@ async function checkForUpdate(manual = false) {
     if (btnEl) btnEl.disabled = false;
   }
 }
+
+// ================================================================
+//  CUSTOM DASHBOARD DESIGNER  (admin.html)
+// ================================================================
+var CD_WIDGET_TYPES = [
+  {type:'button', label:'Button',       emoji:'\uD83D\uDD18', desc:'Toggle any entity',     domain:'switch',             on_service:'turn_on',    off_service:'turn_off',    icon:'bolt', defaultW:2, defaultH:1},
+  {type:'light',  label:'Light',        emoji:'\uD83D\uDCA1', desc:'Light on/off',           domain:'light',              on_service:'turn_on',    off_service:'turn_off',    icon:'bulb', defaultW:2, defaultH:1},
+  {type:'lock',   label:'Lock',         emoji:'\uD83D\uDD12', desc:'Lock / Unlock',           domain:'lock',               on_service:'lock',       off_service:'unlock',      icon:'lock', defaultW:2, defaultH:1},
+  {type:'cover',  label:'Cover',        emoji:'\uD83E\uDE9F', desc:'Open / Close covers',     domain:'cover',              on_service:'open_cover', off_service:'close_cover', icon:'gate', defaultW:2, defaultH:1},
+  {type:'sensor', label:'Sensor',       emoji:'\uD83D\uDCCA', desc:'Display sensor value',    domain:'sensor',             icon:'bolt', defaultW:2, defaultH:1},
+  {type:'climate',label:'Climate',      emoji:'\uD83C\uDF21\uFE0F', desc:'Thermostat / AC',  domain:'climate',            on_service:'turn_on',    off_service:'turn_off',    icon:'ac',   defaultW:3, defaultH:2},
+  {type:'camera', label:'Camera',       emoji:'\uD83D\uDCF7', desc:'Live camera snapshot',    domain:'camera',             icon:'door', defaultW:4, defaultH:3},
+  {type:'media',  label:'Media Player', emoji:'\uD83C\uDFB5', desc:"What's playing",          domain:'media_player',       on_service:'turn_on',    off_service:'turn_off',    icon:'music',defaultW:4, defaultH:2},
+  {type:'alarm',  label:'Alarm',        emoji:'\uD83D\uDEA8', desc:'Arm / Disarm panel',      domain:'alarm_control_panel',icon:'bell', defaultW:3, defaultH:2},
+  {type:'scene',  label:'Scene',        emoji:'\uD83C\uDFAC', desc:'Activate HA scene',       domain:'scene',              on_service:'turn_on',    icon:'moon', defaultW:2, defaultH:1},
+  {type:'weather',label:'Weather',      emoji:'\u26C5',       desc:'Current conditions',      domain:'weather',            icon:'drop', defaultW:4, defaultH:2},
+  {type:'person', label:'Presence',     emoji:'\uD83D\uDC64', desc:'Person home / away',      domain:'person',             icon:'bell', defaultW:2, defaultH:1},
+];
+var CD_DOMAIN_SVCS = {
+  lock:{on:'lock',off:'unlock'}, cover:{on:'open_cover',off:'close_cover'},
+  light:{on:'turn_on',off:'turn_off'}, switch:{on:'turn_on',off:'turn_off'},
+  climate:{on:'turn_on',off:'turn_off'}, media_player:{on:'turn_on',off:'turn_off'},
+  fan:{on:'turn_on',off:'turn_off'}, input_boolean:{on:'turn_on',off:'turn_off'},
+};
+
+var _cdDragType=null, _cdDragWidget=null, _cdDragOffCol=0, _cdDragOffRow=0, _cdEditingId=null;
+
+function getCDData() {
+  if (!D.custom_dashboard) D.custom_dashboard = {enabled:false,label:'My Dashboard',cols:12,rows:8,widgets:[]};
+  return D.custom_dashboard;
+}
+
+function saveCDMeta() {
+  D.custom_dashboard = getCDData();
+  D.custom_dashboard.enabled = document.getElementById('cd-enabled').checked;
+  D.custom_dashboard.label   = document.getElementById('cd-label').value.trim() || 'My Dashboard';
+  pushData().catch(function(){});
+}
+
+function resizeCDGrid() {
+  D.custom_dashboard = getCDData();
+  D.custom_dashboard.cols = parseInt(document.getElementById('cd-cols').value);
+  D.custom_dashboard.rows = parseInt(document.getElementById('cd-rows').value);
+  pushData().then(function(){renderCDGrid();}).catch(function(){});
+}
+
+function clearCDGrid() {
+  if (!confirm('Remove all widgets?')) return;
+  D.custom_dashboard = getCDData();
+  D.custom_dashboard.widgets = [];
+  pushData().then(function(){renderCDGrid();}).catch(function(){});
+}
+
+function renderCDSection() {
+  var cd = getCDData();
+  document.getElementById('cd-enabled').checked = !!cd.enabled;
+  document.getElementById('cd-label').value     = cd.label || 'My Dashboard';
+  document.getElementById('cd-cols').value      = String(cd.cols || 12);
+  document.getElementById('cd-rows').value      = String(cd.rows || 8);
+  renderCDPalette();
+  renderCDGrid();
+}
+
+function renderCDPalette() {
+  var wrap = document.getElementById('cd-palette');
+  wrap.innerHTML = '';
+  CD_WIDGET_TYPES.forEach(function(wt) {
+    var tile = document.createElement('div');
+    tile.style.cssText = 'display:flex;align-items:center;gap:7px;padding:7px 9px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;cursor:grab;user-select:none;transition:border-color .12s;';
+    tile.innerHTML = '<span style="font-size:16px;flex-shrink:0;">' + wt.emoji + '</span>'
+      + '<div style="min-width:0;"><div style="font-size:11px;font-weight:600;color:var(--text);">' + wt.label + '</div>'
+      + '<div style="font-size:9px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + wt.desc + '</div></div>';
+    tile.draggable = true;
+    tile.addEventListener('mouseover', function(){ tile.style.borderColor = 'var(--gold-mid)'; });
+    tile.addEventListener('mouseout',  function(){ tile.style.borderColor = 'var(--border)'; });
+    tile.addEventListener('dragstart', function(e){ _cdDragType = wt.type; _cdDragWidget = null; e.dataTransfer.effectAllowed = 'copy'; tile.style.opacity = '0.6'; });
+    tile.addEventListener('dragend',   function(){ tile.style.opacity = '1'; _cdDragType = null; clearCDHL(); });
+    wrap.appendChild(tile);
+  });
+}
+
+function renderCDGrid() {
+  var cd = getCDData(), cols = cd.cols||12, rows = cd.rows||8;
+  var grid = document.getElementById('cd-grid');
+  var wrap = document.getElementById('cd-grid-wrap');
+  var availW = wrap.clientWidth - 20;
+  var cellW  = Math.max(38, Math.floor(availW / cols));
+  var cellH  = Math.max(38, Math.min(65, Math.round(cellW * 0.7)));
+  grid.style.gridTemplateColumns = 'repeat(' + cols + ',' + cellW + 'px)';
+  grid.style.gridTemplateRows    = 'repeat(' + rows + ',' + cellH + 'px)';
+  grid.style.display = 'grid';
+  grid.style.width   = (cols * cellW) + 'px';
+  grid.style.height  = (rows * cellH) + 'px';
+  grid.innerHTML     = '';
+  for (var r = 1; r <= rows; r++) {
+    for (var c = 1; c <= cols; c++) {
+      (function(col, row) {
+        var cell = document.createElement('div');
+        cell.dataset.col = col; cell.dataset.row = row;
+        cell.style.cssText = 'grid-column:' + col + ';grid-row:' + row + ';border-right:1px dashed var(--border);border-bottom:1px dashed var(--border);position:relative;transition:background .08s;';
+        cell.addEventListener('dragover',  function(e){ e.preventDefault(); showCDHL(col, row, cols, rows); });
+        cell.addEventListener('dragleave', function(){ clearCDHL(); });
+        cell.addEventListener('drop',      function(e){ e.preventDefault(); dropCD(col, row, cols, rows); });
+        grid.appendChild(cell);
+      })(c, r);
+    }
+  }
+  (cd.widgets || []).forEach(function(w) { grid.appendChild(makeCDAdminWidget(w, cellW, cellH, cols, rows)); });
+}
+
+function makeCDAdminWidget(w, cellW, cellH, cols, rows) {
+  var wt  = CD_WIDGET_TYPES.filter(function(t){ return t.type === w.type; })[0] || CD_WIDGET_TYPES[0];
+  var col = Math.max(1, Math.min(w.col, cols));
+  var row = Math.max(1, Math.min(w.row, rows));
+  var ww  = Math.max(1, Math.min(w.w || wt.defaultW, cols - col + 1));
+  var hh  = Math.max(1, Math.min(w.h || wt.defaultH, rows - row + 1));
+  var el  = document.createElement('div');
+  el.dataset.id = w.id; el.draggable = true;
+  el.style.cssText = 'position:absolute;left:' + (col-1)*cellW + 'px;top:' + (row-1)*cellH + 'px;'
+    + 'width:' + (ww*cellW-4) + 'px;height:' + (hh*cellH-4) + 'px;'
+    + 'background:var(--surface);border:2px solid var(--gold-mid);border-radius:8px;'
+    + 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;'
+    + 'cursor:pointer;overflow:hidden;user-select:none;box-shadow:0 2px 8px rgba(0,0,0,.12);transition:border-color .12s;z-index:2;';
+  el.innerHTML = '<div style="font-size:' + (hh > 1 ? '20px' : '14px') + '">' + wt.emoji + '</div>'
+    + '<div style="font-size:' + (hh > 1 ? '11px' : '9px') + ';font-weight:700;color:var(--text);text-align:center;padding:0 3px;line-height:1.2;">' + (w.label || wt.label) + '</div>'
+    + (w.entity
+        ? '<div style="font-size:8px;color:var(--muted);font-family:monospace;padding:0 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">' + w.entity + '</div>'
+        : '<div style="font-size:8px;color:var(--red);font-weight:600;">\u26A0 No entity</div>')
+    + '<div class="cd-rh" style="position:absolute;bottom:2px;right:2px;width:14px;height:14px;cursor:se-resize;opacity:.45;display:flex;align-items:center;justify-content:center;">'
+    + '<svg viewBox="0 0 10 10" style="width:10px;height:10px;fill:var(--muted);"><path d="M0 10L10 0v3L3 10H0zM7 10L10 7v3H7z"/></svg></div>';
+
+  el.addEventListener('mouseover', function(){ el.style.borderColor = 'var(--gold)'; });
+  el.addEventListener('mouseout',  function(){ el.style.borderColor = 'var(--gold-mid)'; });
+  el.addEventListener('click',     function(e){ if (!e.target.closest('.cd-rh')) openCDWidgetModal(w.id); });
+  el.addEventListener('dragstart', function(e) {
+    if (e.target.closest('.cd-rh')) { e.preventDefault(); return; }
+    _cdDragWidget = w; _cdDragType = null;
+    var rect = el.getBoundingClientRect();
+    _cdDragOffCol = Math.floor((e.clientX - rect.left) / cellW);
+    _cdDragOffRow = Math.floor((e.clientY - rect.top)  / cellH);
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(function(){ el.style.opacity = '0.4'; }, 0);
+  });
+  el.addEventListener('dragend', function(){ el.style.opacity = '1'; _cdDragWidget = null; clearCDHL(); });
+
+  el.dataset.w = ww; el.dataset.h = hh;
+  var rh = el.querySelector('.cd-rh');
+  rh.addEventListener('mousedown', function(e) {
+    e.stopPropagation(); e.preventDefault();
+    var sx = e.clientX, sy = e.clientY, ow = ww, oh = hh;
+    function mv(ev) {
+      var nw2 = Math.max(1, Math.min(ow + Math.round((ev.clientX - sx) / cellW), cols - col + 1));
+      var nh2 = Math.max(1, Math.min(oh + Math.round((ev.clientY - sy) / cellH), rows - row + 1));
+      el.style.width  = (nw2 * cellW - 4) + 'px';
+      el.style.height = (nh2 * cellH - 4) + 'px';
+      el.dataset.w = nw2; el.dataset.h = nh2;
+    }
+    function up() {
+      document.removeEventListener('mousemove', mv);
+      document.removeEventListener('mouseup',   up);
+      var widget = (D.custom_dashboard.widgets || []).filter(function(x){ return x.id === w.id; })[0];
+      if (widget) { widget.w = parseInt(el.dataset.w); widget.h = parseInt(el.dataset.h); }
+      pushData().then(function(){ renderCDGrid(); }).catch(function(){});
+    }
+    document.addEventListener('mousemove', mv);
+    document.addEventListener('mouseup',   up);
+  });
+  return el;
+}
+
+function showCDHL(c, r, cols, rows) {
+  var wt  = _cdDragType ? CD_WIDGET_TYPES.filter(function(t){ return t.type === _cdDragType; })[0] : null;
+  var w   = _cdDragWidget;
+  var ww  = w ? (w.w||2) : (wt ? wt.defaultW : 2);
+  var hh  = w ? (w.h||1) : (wt ? wt.defaultH : 1);
+  var tc  = _cdDragWidget ? Math.max(1, Math.min(c - _cdDragOffCol, cols - ww + 1)) : c;
+  var tr  = _cdDragWidget ? Math.max(1, Math.min(r - _cdDragOffRow, rows - hh + 1)) : r;
+  document.getElementById('cd-grid').querySelectorAll('[data-col]').forEach(function(cell) {
+    var cc = parseInt(cell.dataset.col), cr = parseInt(cell.dataset.row);
+    cell.style.background = (cc >= tc && cc < tc + ww && cr >= tr && cr < tr + hh) ? 'var(--gold-dim)' : '';
+  });
+}
+
+function clearCDHL() {
+  var g = document.getElementById('cd-grid');
+  if (g) g.querySelectorAll('[data-col]').forEach(function(c){ c.style.background = ''; });
+}
+
+function dropCD(c, r, cols, rows) {
+  clearCDHL();
+  D.custom_dashboard = getCDData();
+  var cd = D.custom_dashboard;
+  if (_cdDragWidget) {
+    var w = (cd.widgets || []).filter(function(x){ return x.id === _cdDragWidget.id; })[0];
+    if (!w) return;
+    w.col = Math.max(1, Math.min(c - _cdDragOffCol, cols - (w.w||2) + 1));
+    w.row = Math.max(1, Math.min(r - _cdDragOffRow, rows - (w.h||1) + 1));
+    pushData().then(function(){ renderCDGrid(); }).catch(function(){});
+  } else if (_cdDragType) {
+    var wt = CD_WIDGET_TYPES.filter(function(t){ return t.type === _cdDragType; })[0];
+    if (!wt) return;
+    var nw = {
+      id: 'cdw_' + Date.now().toString(36),
+      type: wt.type, label: wt.label, entity: '',
+      col: c, row: r,
+      w: Math.min(wt.defaultW, cols - c + 1),
+      h: Math.min(wt.defaultH, rows - r + 1),
+      icon: wt.icon || 'bolt', domain: wt.domain || '',
+      on_service: wt.on_service || '', off_service: wt.off_service || '',
+    };
+    cd.widgets = cd.widgets || []; cd.widgets.push(nw);
+    pushData().then(function(){ renderCDGrid(); openCDWidgetModal(nw.id); }).catch(function(){});
+  }
+  _cdDragType = null; _cdDragWidget = null;
+}
+
+function openCDWidgetModal(id) {
+  _cdEditingId = id;
+  var cd = getCDData();
+  var w  = (cd.widgets || []).filter(function(x){ return x.id === id; })[0];
+  if (!w) return;
+  var wt = CD_WIDGET_TYPES.filter(function(t){ return t.type === w.type; })[0] || CD_WIDGET_TYPES[0];
+  document.getElementById('cd-widget-modal-title').textContent = 'Configure ' + wt.label;
+  document.getElementById('cd-wm-label').value  = w.label  || wt.label;
+  document.getElementById('cd-wm-entity').value = w.entity || '';
+  document.getElementById('cd-wm-w').value      = String(w.w || wt.defaultW);
+  document.getElementById('cd-wm-h').value      = String(w.h || wt.defaultH);
+  document.getElementById('cd-wm-entity-hint').innerHTML = '';
+  var needsSvc = ['button','light','lock','cover','climate','media','scene','alarm'].indexOf(w.type) >= 0;
+  document.getElementById('cd-wm-svc-wrap').style.display = needsSvc ? '' : 'none';
+  if (needsSvc) {
+    document.getElementById('cd-wm-on-svc').value  = w.on_service  || wt.on_service  || '';
+    document.getElementById('cd-wm-off-svc').value = w.off_service || wt.off_service || '';
+  }
+  document.getElementById('cd-wm-sensor-wrap').style.display = w.type === 'sensor' ? '' : 'none';
+  if (w.type === 'sensor') document.getElementById('cd-wm-sensor-type').value = w.sensorType || 'generic';
+  var showIcon = ['camera','weather','media','alarm'].indexOf(w.type) < 0;
+  document.getElementById('cd-wm-icon-wrap').style.display = showIcon ? '' : 'none';
+  if (showIcon) {
+    var picker = document.getElementById('cd-wm-icon-picker'), cur = w.icon || wt.icon || 'bolt';
+    document.getElementById('cd-wm-icon').value = cur;
+    picker.innerHTML = '';
+    ['lock','gate','moon','bulb','ac','drop','tv','music','bolt','fan','door','bell'].forEach(function(ic) {
+      var b = document.createElement('div');
+      b.style.cssText = 'width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:6px;cursor:pointer;border:2px solid ' + (ic === cur ? 'var(--gold)' : 'var(--border)') + ';background:var(--surface2);transition:border-color .1s;';
+      b.innerHTML = SLOT_ICON_SVG[ic] || '';
+      if (b.querySelector('svg')) b.querySelector('svg').style.cssText = 'width:15px;height:15px;stroke:var(--muted);pointer-events:none;';
+      b.onclick = function() {
+        document.getElementById('cd-wm-icon').value = ic;
+        picker.querySelectorAll('div').forEach(function(x){ x.style.borderColor = 'var(--border)'; });
+        b.style.borderColor = 'var(--gold)';
+      };
+      picker.appendChild(b);
+    });
+  }
+  openModal('cd-widget-modal');
+  setTimeout(function(){ document.getElementById('cd-wm-label').focus(); }, 50);
+}
+
+function onCDEntityInput(val) {
+  var hint = document.getElementById('cd-wm-entity-hint');
+  if (!val) { hint.innerHTML = ''; return; }
+  var dom = val.split('.')[0], svc = CD_DOMAIN_SVCS[dom];
+  if (svc) {
+    hint.innerHTML = '<span style="color:var(--green);">\u2713 Domain: <strong>' + dom + '</strong></span>';
+    var on = document.getElementById('cd-wm-on-svc'), off = document.getElementById('cd-wm-off-svc');
+    if (!on.value)  on.value  = svc.on  || '';
+    if (!off.value) off.value = svc.off || '';
+  } else {
+    hint.innerHTML = '<span style="color:var(--muted);">Domain: <strong>' + dom + '</strong></span>';
+  }
+}
+
+function saveCDWidget() {
+  D.custom_dashboard = getCDData();
+  var w = (D.custom_dashboard.widgets || []).filter(function(x){ return x.id === _cdEditingId; })[0];
+  if (!w) { closeModal('cd-widget-modal'); return; }
+  w.label  = document.getElementById('cd-wm-label').value.trim()  || w.label;
+  w.entity = document.getElementById('cd-wm-entity').value.trim();
+  w.w      = parseInt(document.getElementById('cd-wm-w').value) || w.w;
+  w.h      = parseInt(document.getElementById('cd-wm-h').value) || w.h;
+  var onEl = document.getElementById('cd-wm-on-svc'), offEl = document.getElementById('cd-wm-off-svc');
+  if (onEl)  w.on_service  = onEl.value.trim();
+  if (offEl) w.off_service = offEl.value.trim();
+  var iconEl = document.getElementById('cd-wm-icon');
+  if (iconEl) w.icon = iconEl.value;
+  if (w.type === 'sensor') { var st = document.getElementById('cd-wm-sensor-type'); if (st) w.sensorType = st.value; }
+  pushData().then(function(){ renderCDGrid(); closeModal('cd-widget-modal'); toast('Widget saved!'); }).catch(function(){});
+}
+
+function deleteCDWidget() {
+  if (!_cdEditingId) return;
+  D.custom_dashboard = getCDData();
+  D.custom_dashboard.widgets = (D.custom_dashboard.widgets || []).filter(function(x){ return x.id !== _cdEditingId; });
+  pushData().then(function(){ renderCDGrid(); closeModal('cd-widget-modal'); toast('Widget removed'); }).catch(function(){});
+}
+
 
 async function init() {
   // Wire dedup checkbox to update its label live

@@ -992,6 +992,46 @@ Add it in <strong>Admin → Settings → IP Allowlist</strong> from an authorise
     return;
   }
 
+  // -- /api/ha/camera/:entityId  GET ----------------------------------------
+  // Proxies HA camera snapshots so the dashboard never needs direct HA access.
+  if (pathname.startsWith('/api/ha/camera/') && method === 'GET') {
+    try {
+      const entityId = decodeURIComponent(pathname.slice('/api/ha/camera/'.length));
+      if (!entityId) { res.writeHead(400); res.end(); return; }
+      const snapPath = '/api/camera_proxy/' + entityId;
+      const imgBuf = await new Promise((resolve, reject) => {
+        let base;
+        try { base = new URL(HA_URL); } catch(e) { return reject(e); }
+        const isHttps = base.protocol === 'https:';
+        const lib     = isHttps ? require('https') : require('http');
+        const port    = base.port ? parseInt(base.port, 10) : (isHttps ? 443 : 80);
+        const opts = {
+          hostname: base.hostname, port,
+          path: snapPath, method: 'GET',
+          headers: { 'Authorization': 'Bearer ' + HA_TOKEN, 'Accept': 'image/*' },
+        };
+        const req2 = lib.request(opts, res2 => {
+          const chunks = [];
+          res2.on('data', c => chunks.push(c));
+          res2.on('end', () => resolve({ buf: Buffer.concat(chunks), ct: res2.headers['content-type'] || 'image/jpeg', status: res2.statusCode }));
+        });
+        req2.setTimeout(8000, () => { req2.destroy(); reject(new Error('Camera proxy timeout')); });
+        req2.on('error', reject);
+        req2.end();
+      });
+      if (imgBuf.status !== 200) {
+        console.warn('  Camera proxy: HA returned ' + imgBuf.status + ' for ' + entityId);
+        res.writeHead(imgBuf.status); res.end(); return;
+      }
+      res.writeHead(200, { 'Content-Type': imgBuf.ct, 'Content-Length': imgBuf.buf.length, 'Cache-Control': 'no-store' });
+      res.end(imgBuf.buf);
+    } catch (e) {
+      console.warn('  Camera proxy error:', e.message);
+      res.writeHead(502); res.end();
+    }
+    return;
+  }
+
   // ── Static pages ────────────────────────────────────────
   if (pathname === '/' || pathname === '/index.html') {
     sendFile(res, path.join(ROOT, 'index.html')); return;

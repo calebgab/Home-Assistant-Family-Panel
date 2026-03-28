@@ -3145,7 +3145,25 @@ var CD_DOMAIN_SVCS = {
   fan:{on:'turn_on',off:'turn_off'}, input_boolean:{on:'turn_on',off:'turn_off'},
 };
 
-var _cdDragType=null, _cdDragWidget=null, _cdDragOffCol=0, _cdDragOffRow=0, _cdEditingId=null;
+var _cdDragType=null, _cdDragWidget=null, _cdDragOffCol=0, _cdDragOffRow=0, _cdEditingId=null, _cdTouchMoved=false;
+
+function cdTouchMove(e) {
+  e.preventDefault();
+  var t = e.touches[0];
+  var over = document.elementFromPoint(t.clientX, t.clientY);
+  var cell = over && over.closest('[data-col]');
+  var cd = getCDData();
+  if (cell) showCDHL(parseInt(cell.dataset.col), parseInt(cell.dataset.row), cd.cols||12, cd.rows||8);
+  else clearCDHL();
+}
+function cdTouchDrop(e) {
+  var t = e.changedTouches[0];
+  var over = document.elementFromPoint(t.clientX, t.clientY);
+  var cell = over && over.closest('[data-col]');
+  var cd = getCDData();
+  if (cell) dropCD(parseInt(cell.dataset.col), parseInt(cell.dataset.row), cd.cols||12, cd.rows||8);
+  else { _cdDragWidget = null; _cdDragType = null; clearCDHL(); }
+}
 
 function getCDData() {
   if (!D.custom_dashboard) D.custom_dashboard = {enabled:false,label:'Home Control',cols:12,rows:8,widgets:[]};
@@ -3197,6 +3215,9 @@ function renderCDPalette() {
     tile.addEventListener('mouseout',  function(){ tile.style.borderColor = 'var(--border)'; });
     tile.addEventListener('dragstart', function(e){ _cdDragType = wt.type; _cdDragWidget = null; e.dataTransfer.effectAllowed = 'copy'; tile.style.opacity = '0.6'; });
     tile.addEventListener('dragend',   function(){ tile.style.opacity = '1'; _cdDragType = null; clearCDHL(); });
+    tile.addEventListener('touchstart', function(e){ e.preventDefault(); _cdDragType = wt.type; _cdDragWidget = null; tile.style.opacity = '0.6'; }, {passive:false});
+    tile.addEventListener('touchmove',  cdTouchMove, {passive:false});
+    tile.addEventListener('touchend',   function(e){ e.preventDefault(); tile.style.opacity = '1'; cdTouchDrop(e); _cdDragType = null; clearCDHL(); }, {passive:false});
     wrap.appendChild(tile);
   });
 }
@@ -3264,6 +3285,22 @@ function makeCDAdminWidget(w, cellW, cellH, cols, rows) {
     setTimeout(function(){ el.style.opacity = '0.4'; }, 0);
   });
   el.addEventListener('dragend', function(){ el.style.opacity = '1'; _cdDragWidget = null; clearCDHL(); });
+  el.addEventListener('touchstart', function(e){
+    if (e.target.closest('.cd-rh')) return;
+    e.preventDefault();
+    _cdTouchMoved = false; _cdDragWidget = w; _cdDragType = null;
+    var rect = el.getBoundingClientRect(), t = e.touches[0];
+    _cdDragOffCol = Math.floor((t.clientX - rect.left) / cellW);
+    _cdDragOffRow = Math.floor((t.clientY - rect.top)  / cellH);
+    setTimeout(function(){ if (_cdDragWidget) el.style.opacity = '0.4'; }, 120);
+  }, {passive:false});
+  el.addEventListener('touchmove', function(e){ _cdTouchMoved = true; cdTouchMove(e); }, {passive:false});
+  el.addEventListener('touchend', function(e){
+    e.preventDefault();
+    el.style.opacity = '1';
+    if (_cdTouchMoved) { cdTouchDrop(e); }
+    else { _cdDragWidget = null; clearCDHL(); openCDWidgetModal(w.id); }
+  }, {passive:false});
 
   el.dataset.w = ww; el.dataset.h = hh;
   var rh = el.querySelector('.cd-rh');
@@ -3287,6 +3324,28 @@ function makeCDAdminWidget(w, cellW, cellH, cols, rows) {
     document.addEventListener('mousemove', mv);
     document.addEventListener('mouseup',   up);
   });
+  rh.addEventListener('touchstart', function(e) {
+    e.stopPropagation(); e.preventDefault();
+    var t = e.touches[0], sx = t.clientX, sy = t.clientY, ow = ww, oh = hh;
+    function mv(ev) {
+      ev.preventDefault();
+      var tt = ev.touches[0];
+      var nw2 = Math.max(1, Math.min(ow + Math.round((tt.clientX - sx) / cellW), cols - col + 1));
+      var nh2 = Math.max(1, Math.min(oh + Math.round((tt.clientY - sy) / cellH), rows - row + 1));
+      el.style.width  = (nw2 * cellW - 4) + 'px';
+      el.style.height = (nh2 * cellH - 4) + 'px';
+      el.dataset.w = nw2; el.dataset.h = nh2;
+    }
+    function up() {
+      document.removeEventListener('touchmove', mv);
+      document.removeEventListener('touchend',  up);
+      var widget = (D.custom_dashboard.widgets || []).filter(function(x){ return x.id === w.id; })[0];
+      if (widget) { widget.w = parseInt(el.dataset.w); widget.h = parseInt(el.dataset.h); }
+      pushData().then(function(){ renderCDGrid(); }).catch(function(){});
+    }
+    document.addEventListener('touchmove', mv, {passive:false});
+    document.addEventListener('touchend',  up);
+  }, {passive:false});
   return el;
 }
 

@@ -1143,7 +1143,7 @@ button:hover{opacity:.88;}
   <div class="sub">Admin access is password protected.</div>
   ${lVersion ? `<div class="ver">v${lVersion}</div>` : ''}
   <label>Password</label>
-  <input type="password" id="pw" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')login()">
+  <input type="password" id="pw" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')login()" autofocus>
   <button onclick="login()">Sign in</button>
   <div id="err"></div>
 </div>

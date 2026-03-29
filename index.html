@@ -1703,9 +1703,16 @@ function renderChoresOverlay() {
     hdr.innerHTML = `
       ${_csGam && _csMedal ? `<div style="position:absolute;top:6px;left:6px;font-size:20px;line-height:1;">${_csMedal}</div>` : ''}
       ${_csGam && _csStreak > 0 ? `<div style="position:absolute;bottom:6px;left:6px;font-size:18px;line-height:1;">🔥<span style="font-size:11px;font-weight:700;color:var(--text);vertical-align:middle;">${_csStreak}</span></div>` : ''}
-      <div class="cs-avatar" style="background:${u.photo ? 'transparent' : bg};${u.photo ? 'padding:0;overflow:hidden;' : ''}">${u.photo ? `<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (u.emoji || u.name[0])}</div>
-      <div class="cs-col-name" style="color:${u.color}">${u.name}</div>
-      ${_csGam ? `<div style="font-size:14px;font-weight:800;color:${u.color};line-height:1.2;">${_csPts}<span style="font-size:9px;font-weight:600;color:var(--muted);">pts</span></div>` : ''}
+      <div style="display:flex;flex-direction:row;align-items:center;width:100%;gap:4px;">
+        <div style="flex:1;"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">
+          <div class="cs-avatar" style="background:${u.photo ? 'transparent' : bg};${u.photo ? 'padding:0;overflow:hidden;' : ''}">${u.photo ? `<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (u.emoji || u.name[0])}</div>
+          <div class="cs-col-name" style="color:${u.color}">${u.name}</div>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:flex-end;">
+          ${_csGam ? `<div style="font-size:14px;font-weight:800;color:${u.color};line-height:1.2;text-align:center;">${_csPts}<span style="font-size:9px;font-weight:600;color:var(--muted);">pts</span></div>` : ''}
+        </div>
+      </div>
       ${u.haEntity ? `<div class="cs-presence" id="cs-presence-${u.id}">
         <div class="cs-presence-dot"></div>
         <span class="cs-presence-status">—</span>

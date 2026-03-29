@@ -1575,7 +1575,9 @@ function renderPayCard() {
   const card = document.getElementById('pay-card');
   const rowsEl = document.getElementById('pay-rows');
   if (!card || !rowsEl) return;
-  const payDay = (D.settings || {}).chorePayDay ?? 6;
+  const _s = D.settings || {};
+  if (!_s.chorePayEnabled) { card.style.display = 'none'; return; }
+  const payDay = _s.chorePayDay ?? 6;
   const isPayDay = new Date().getDay() === payDay;
   const gamUsers = (D.users || []).filter(u => u.gamification && u.weeklyPay > 0);
   if (!isPayDay || !gamUsers.length) { card.style.display = 'none'; return; }

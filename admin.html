@@ -696,7 +696,11 @@ select option { background: var(--surface); }
           </div>
         </div>
         <div style="padding:12px 20px 16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-          <div style="display:flex;align-items:center;gap:8px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="cfg-pay-enabled" onchange="document.getElementById('cfg-pay-day-row').style.display=this.checked?'flex':'none'" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer;">
+            <span style="font-size:12px;font-weight:600;color:var(--text);">Enable Pocket Money</span>
+          </label>
+          <div id="cfg-pay-day-row" style="display:none;align-items:center;gap:8px;">
             <label style="font-size:12px;font-weight:600;color:var(--text);">Pay day</label>
             <select id="cfg-pay-day" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:5px 10px;outline:none;cursor:pointer;font-family:inherit;">
               <option value="0">Sunday</option>
@@ -1844,7 +1848,8 @@ let _editingChoreId = null;
 
 function saveChorePaySettings() {
   D.settings = D.settings || {};
-  D.settings.chorePayDay = parseInt(document.getElementById('cfg-pay-day').value);
+  D.settings.chorePayEnabled = document.getElementById('cfg-pay-enabled').checked;
+  D.settings.chorePayDay     = parseInt(document.getElementById('cfg-pay-day').value);
   pushData().then(() => toast('Pocket money settings saved!'));
 }
 
@@ -1854,8 +1859,15 @@ function renderChores() {
   const users  = D.users  || [];
   document.getElementById('chore-count-label').textContent =
     `${chores.length} task${chores.length !== 1 ? 's' : ''} total`;
+  const s = D.settings || {};
+  const payEnabled = !!s.chorePayEnabled;
+  const payEnabledCb = document.getElementById('cfg-pay-enabled');
+  if (payEnabledCb) {
+    payEnabledCb.checked = payEnabled;
+    document.getElementById('cfg-pay-day-row').style.display = payEnabled ? 'flex' : 'none';
+  }
   const payDaySel = document.getElementById('cfg-pay-day');
-  if (payDaySel) payDaySel.value = (D.settings || {}).chorePayDay ?? 6;
+  if (payDaySel) payDaySel.value = s.chorePayDay ?? 6;
 
   list.innerHTML = '';
   if (!chores.length) {

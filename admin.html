@@ -1205,6 +1205,19 @@ select option { background: var(--surface); }
       <div style="margin-top:5px;font-size:11px;color:var(--faint);">Used to send a push notification when a chore assigned to this person is completed.</div>
     </div>
 
+    <div class="form-group" id="um-gamification-row" style="margin-bottom:0;margin-top:12px;display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;">
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--text);">Gamification</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:1px;">Show streak &amp; weekly leaderboard for this child</div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex-shrink:0;">
+          <input type="checkbox" id="um-gamification" onchange="document.getElementById('um-gamification-label').textContent=this.checked?'On':'Off'" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer;">
+          <span style="font-size:12px;color:var(--muted);" id="um-gamification-label">Off</span>
+        </label>
+      </div>
+    </div>
+
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('user-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="saveUser()">Save</button>
@@ -1373,6 +1386,11 @@ select option { background: var(--surface); }
           <option value="once">One-off</option>
         </select>
       </div>
+    </div>
+
+    <div class="form-group" style="margin-top:4px;margin-bottom:4px;">
+      <label class="form-label">Points <span style="font-weight:400;color:var(--faint)">(awarded on completion)</span></label>
+      <input type="number" id="cm-points" value="10" min="0" max="9999" style="width:100px;" placeholder="10">
     </div>
 
     <!-- Daily: reset times -->
@@ -1653,6 +1671,12 @@ function openUserModal(userId) {
   document.getElementById('um-age').value      = u?.age      || '';
   document.getElementById('um-ha-entity').value = u?.haEntity || '';
   document.getElementById('um-notify-entity').value = u?.notifyEntity || '';
+  const _isKid = u ? !u.isAdult : false;
+  const _gamRow = document.getElementById('um-gamification-row');
+  _gamRow.style.display = _isKid ? '' : 'none';
+  const _gamCb = document.getElementById('um-gamification');
+  _gamCb.checked = u?.gamification || false;
+  document.getElementById('um-gamification-label').textContent = _gamCb.checked ? 'On' : 'Off';
   selectedEmoji = u?.emoji || '👤';
   document.getElementById('um-emoji-custom').value = '';
 
@@ -1702,11 +1726,18 @@ async function saveUser() {
 
   if (editingUserId) {
     const u = D.users.find(x => x.id === editingUserId);
-    if (u) { u.name = name; u.color = color; u.emoji = emoji; u.age = age; u.isAdult = !age || age >= 18; u.haEntity = haEntity; u.notifyEntity = notifyEntity; u.photo = _userPhotoData || null; }
+    if (u) {
+      u.name = name; u.color = color; u.emoji = emoji; u.age = age;
+      u.isAdult = !age || age >= 18;
+      u.haEntity = haEntity; u.notifyEntity = notifyEntity;
+      u.photo = _userPhotoData || null;
+      u.gamification = u.isAdult ? false : document.getElementById('um-gamification').checked;
+    }
   } else {
     D.users = D.users || [];
     const id = name.toLowerCase().replace(/\s+/g, '_') + '_' + uid().slice(0,4);
-    D.users.push({ id, name, color, emoji, age, isAdult: !age || age >= 18, home: true, haEntity, notifyEntity, photo: _userPhotoData || null });
+    const _newIsAdult = !age || age >= 18;
+    D.users.push({ id, name, color, emoji, age, isAdult: _newIsAdult, home: true, haEntity, notifyEntity, photo: _userPhotoData || null, gamification: _newIsAdult ? false : document.getElementById('um-gamification').checked });
   }
 
   await pushData();
@@ -1961,6 +1992,7 @@ function openChoreModal(id) {
   // Notify checkbox — only show if the assigned user has a notifyEntity
   _updateChoreNotifyRow(ch?.userId || (D.users||[])[0]?.id, ch?.notify || false, ch?.notifyAssign || false);
 
+  document.getElementById('cm-points').value = (typeof ch?.points === 'number') ? ch.points : 10;
   onChoreRecurChange();
   openModal('chore-modal');
   setTimeout(() => document.getElementById('cm-label').focus(), 60);
@@ -2100,6 +2132,7 @@ async function saveChoreModal() {
   const entry = {
     id: _editingChoreId || 'ch_' + uid(),
     userId, label, recur,
+    points:       parseInt(document.getElementById('cm-points').value) || 10,
     notify:       document.getElementById('cm-notify').checked,
     notifyAssign: document.getElementById('cm-notify-assign').checked,
     done:     existing?.done     || false,

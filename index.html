@@ -288,6 +288,17 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .chore-filters { display: flex; gap: 4px; margin-left: auto; }
 .chore-filter-btn { font-family: 'DM Sans', sans-serif; font-size: 7px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--muted); padding: 2px 7px; cursor: pointer; transition: all var(--ease); }
 .chore-filter-btn.active { background: var(--gold-dim); border-color: rgba(232,168,64,.3); color: var(--gold); }
+/* ── LEADERBOARD ── */
+#chores-leaderboard { display: flex; gap: 8px; padding: 8px 10px 4px; overflow-x: auto; flex-shrink: 0; }
+#chores-leaderboard::-webkit-scrollbar { display: none; }
+.lb-card { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 10px; border-radius: 10px; border: 1px solid var(--border); min-width: 58px; position: relative; flex-shrink: 0; }
+.lb-avatar { width: 26px; height: 26px; border-radius: 50%; font-size: 14px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.lb-name { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+.lb-pts { font-size: 13px; font-weight: 800; color: var(--text); line-height: 1; }
+.lb-pts-label { font-size: 7px; font-weight: 600; color: var(--muted); margin-left: 1px; text-transform: uppercase; }
+.lb-medal { position: absolute; top: 3px; right: 3px; font-size: 9px; }
+.chore-streak { font-size: 8px; color: var(--text); font-weight: 700; margin-top: 1px; }
+.cs-streak { font-size: 11px; font-weight: 700; color: var(--text); margin-top: 1px; }
 
 /* ── CHORES FULLSCREEN OVERLAY ── */
 #chores-overlay {
@@ -646,6 +657,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
           <button class="chore-filter-btn" onclick="setChoreFilter('monthly',this)">Monthly</button>
         </div>
       </div>
+      <div id="chores-leaderboard" style="display:none;"></div>
       <div id="chores-grid"></div>
     </div>
   </div>
@@ -1448,6 +1460,74 @@ function renderPresence() {
 }
 
 // ═══════════════════════════════════════════════════════════
+//  GAMIFICATION HELPERS
+// ═══════════════════════════════════════════════════════════
+function chorePoints(chore) {
+  return (typeof chore.points === 'number' && chore.points >= 0) ? chore.points : 10;
+}
+
+function computeStreak(userId) {
+  const allDates = (D.chores || [])
+    .filter(c => c.userId === userId)
+    .flatMap(c => (c.log || []).map(e => e.ts.slice(0, 10)));
+  const daySet = new Set(allDates);
+  let streak = 0;
+  const d = new Date();
+  while (true) {
+    const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    if (!daySet.has(key)) break;
+    streak++;
+    d.setDate(d.getDate() - 1);
+  }
+  return streak;
+}
+
+function weeklyPoints(userId) {
+  const now = new Date();
+  const jsDay = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + (jsDay === 0 ? -6 : 1 - jsDay));
+  monday.setHours(0, 0, 0, 0);
+  let total = 0;
+  (D.chores || []).filter(c => c.userId === userId).forEach(c => {
+    (c.log || []).forEach(e => {
+      if (new Date(e.ts) >= monday && typeof e.points === 'number') total += e.points;
+    });
+  });
+  return total;
+}
+
+function hasGamifiedKids() {
+  return (D.users || []).some(u => !u.isAdult && u.gamification);
+}
+
+function renderLeaderboard() {
+  const el = document.getElementById('chores-leaderboard');
+  if (!el) return;
+  if (!hasGamifiedKids()) { el.style.display = 'none'; return; }
+  const kids = (D.users || []).filter(u => !u.isAdult && u.gamification);
+  const ranked = kids.map(u => ({ u, pts: weeklyPoints(u.id), streak: computeStreak(u.id) }))
+    .sort((a, b) => b.pts - a.pts);
+  el.style.display = 'flex';
+  const medals = ['🥇','🥈','🥉'];
+  el.innerHTML = '<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);align-self:center;white-space:nowrap;padding-right:4px;">This week</div>'
+    + ranked.map(({ u, pts, streak }, i) => {
+      const bg = hexToRgba(u.color, 0.12);
+      const bd = hexToRgba(u.color, 0.25);
+      const avatar = u.photo
+        ? `<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
+        : (u.emoji || u.name[0]);
+      return `<div class="lb-card" style="background:${bg};border-color:${bd};">
+        ${medals[i] ? `<div class="lb-medal">${medals[i]}</div>` : ''}
+        <div class="lb-avatar">${avatar}</div>
+        <div class="lb-name" style="color:${u.color}">${u.name}</div>
+        <div class="lb-pts">${pts}<span class="lb-pts-label">pts</span></div>
+        ${streak > 0 ? `<div style="font-size:8px;color:var(--muted);">🔥 ${streak}</div>` : ''}
+      </div>`;
+    }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
 //  CHORES
 // ═══════════════════════════════════════════════════════════
 function setChoreFilter(f, btn) {
@@ -1479,10 +1559,13 @@ function renderChores() {
     const bg  = hexToRgba(u.color, 0.12);
     const col = document.createElement('div');
     col.className = 'chore-col';
+    const _streak = (!u.isAdult && u.gamification) ? computeStreak(u.id) : 0;
+    const _streakHtml = _streak > 0 ? `<div class="chore-streak">🔥 ${_streak}</div>` : '';
     col.innerHTML = `
       <div class="chore-col-hdr">
         <div class="chore-avatar" style="background:${u.photo ? 'transparent' : bg};${u.photo ? 'padding:0;overflow:hidden;' : ''}">${u.photo ? `<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (u.emoji || u.name[0])}</div>
         <div class="chore-col-name" style="color:${u.color}">${u.name}</div>
+        ${_streakHtml}
         <div class="chore-presence" id="presence-${u.id}">
           <div class="chore-presence-dot"></div>
           <span class="chore-presence-status">—</span>
@@ -1513,7 +1596,7 @@ function renderChores() {
           const ts  = localTimestamp();
           c.doneDate = todayStr();
           c.log = c.log || [];
-          c.log.unshift({ ts, label: c.label });
+          c.log.unshift({ ts, label: c.label, points: chorePoints(c) });
           const maxDays = D?.settings?.choreLogDays ?? 10;
           const cutoff  = new Date(); cutoff.setDate(cutoff.getDate() - maxDays);
           c.log = c.log.filter(e => new Date(e.ts) >= cutoff);
@@ -1534,6 +1617,7 @@ function renderChores() {
       items.appendChild(item);
     });
   });
+  renderLeaderboard();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1601,9 +1685,12 @@ function renderChoresOverlay() {
     // Column header
     const hdr = document.createElement('div');
     hdr.className = 'cs-col-hdr';
+    const _csStreak = (!u.isAdult && u.gamification) ? computeStreak(u.id) : 0;
+    const _csStreakHtml = _csStreak > 0 ? `<div class="cs-streak">🔥 ${_csStreak}</div>` : '';
     hdr.innerHTML = `
       <div class="cs-avatar" style="background:${u.photo ? 'transparent' : bg};${u.photo ? 'padding:0;overflow:hidden;' : ''}">${u.photo ? `<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (u.emoji || u.name[0])}</div>
       <div class="cs-col-name" style="color:${u.color}">${u.name}</div>
+      ${_csStreakHtml}
       ${u.haEntity ? `<div class="cs-presence" id="cs-presence-${u.id}">
         <div class="cs-presence-dot"></div>
         <span class="cs-presence-status">—</span>
@@ -1633,7 +1720,7 @@ function renderChoresOverlay() {
             const ts  = localTimestamp();
             c.doneDate = todayStr();
             c.log = c.log || [];
-            c.log.unshift({ ts, label: c.label });
+            c.log.unshift({ ts, label: c.label, points: chorePoints(c) });
             const maxDays = D?.settings?.choreLogDays ?? 10;
             const cutoff  = new Date(); cutoff.setDate(cutoff.getDate() - maxDays);
             c.log = c.log.filter(e => new Date(e.ts) >= cutoff);

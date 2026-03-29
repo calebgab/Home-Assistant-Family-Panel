@@ -1671,9 +1671,8 @@ function openUserModal(userId) {
   document.getElementById('um-age').value      = u?.age      || '';
   document.getElementById('um-ha-entity').value = u?.haEntity || '';
   document.getElementById('um-notify-entity').value = u?.notifyEntity || '';
-  const _isKid = u ? !u.isAdult : false;
   const _gamRow = document.getElementById('um-gamification-row');
-  _gamRow.style.display = _isKid ? '' : 'none';
+  _gamRow.style.display = '';
   const _gamCb = document.getElementById('um-gamification');
   _gamCb.checked = u?.gamification || false;
   document.getElementById('um-gamification-label').textContent = _gamCb.checked ? 'On' : 'Off';
@@ -1731,13 +1730,13 @@ async function saveUser() {
       u.isAdult = !age || age >= 18;
       u.haEntity = haEntity; u.notifyEntity = notifyEntity;
       u.photo = _userPhotoData || null;
-      u.gamification = u.isAdult ? false : document.getElementById('um-gamification').checked;
+      u.gamification = document.getElementById('um-gamification').checked;
     }
   } else {
     D.users = D.users || [];
     const id = name.toLowerCase().replace(/\s+/g, '_') + '_' + uid().slice(0,4);
     const _newIsAdult = !age || age >= 18;
-    D.users.push({ id, name, color, emoji, age, isAdult: _newIsAdult, home: true, haEntity, notifyEntity, photo: _userPhotoData || null, gamification: _newIsAdult ? false : document.getElementById('um-gamification').checked });
+    D.users.push({ id, name, color, emoji, age, isAdult: _newIsAdult, home: true, haEntity, notifyEntity, photo: _userPhotoData || null, gamification: document.getElementById('um-gamification').checked });
   }
 
   await pushData();

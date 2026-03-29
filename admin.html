@@ -687,6 +687,31 @@ select option { background: var(--surface); }
         </div>
       </div>
 
+      <!-- Pocket Money Settings -->
+      <div class="panel" style="margin-top:16px;">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Pocket Money</div>
+            <div class="panel-sub">Configure when pocket money is calculated and paid. Set each child's weekly amount and gamification in their user profile.</div>
+          </div>
+        </div>
+        <div style="padding:12px 20px 16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <label style="font-size:12px;font-weight:600;color:var(--text);">Pay day</label>
+            <select id="cfg-pay-day" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:5px 10px;outline:none;cursor:pointer;font-family:inherit;">
+              <option value="0">Sunday</option>
+              <option value="1">Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4">Thursday</option>
+              <option value="5">Friday</option>
+              <option value="6" selected>Saturday</option>
+            </select>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="saveChorePaySettings()">Save</button>
+        </div>
+      </div>
+
       <!-- Schedule Overview -->
       <div class="panel" style="margin-top:16px;">
         <div class="panel-header">
@@ -854,6 +879,16 @@ select option { background: var(--surface); }
           </div>
           <div class="setting-control">
             <input type="text" id="cfg-weather" placeholder="Hamilton, NZ">
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Pocket Money — Minimum Completion %</div>
+            <div class="setting-desc">Kids must reach this completion percentage to earn any pocket money. Below this threshold they earn $0. Default: 50%.</div>
+          </div>
+          <div class="setting-control">
+            <input type="number" id="cfg-pay-min-pct" min="0" max="100" style="width:80px;" placeholder="50">
+            <span style="font-size:12px;color:var(--muted);margin-left:4px;">%</span>
           </div>
         </div>
         <div class="setting-row">
@@ -1203,6 +1238,11 @@ select option { background: var(--surface); }
       <label class="form-label">Notification Entity <span style="font-weight:400;color:var(--faint)">(optional — for chore alerts)</span></label>
       <input type="text" id="um-notify-entity" placeholder="e.g. notify.mobile_app_lauras_phone">
       <div style="margin-top:5px;font-size:11px;color:var(--faint);">Used to send a push notification when a chore assigned to this person is completed.</div>
+    </div>
+
+    <div class="form-group" id="um-weekly-pay-row" style="margin-bottom:0;margin-top:12px;display:none;">
+      <label class="form-label">Weekly Pocket Money <span style="font-weight:400;color:var(--faint)">(base amount in $, paid on Saturdays)</span></label>
+      <input type="number" id="um-weekly-pay" min="0" max="999" step="0.50" placeholder="e.g. 5.00" style="width:120px;">
     </div>
 
     <div class="form-group" id="um-gamification-row" style="margin-bottom:0;margin-top:12px;display:none;">
@@ -1673,6 +1713,9 @@ function openUserModal(userId) {
   document.getElementById('um-notify-entity').value = u?.notifyEntity || '';
   const _gamRow = document.getElementById('um-gamification-row');
   _gamRow.style.display = '';
+  const _payRow = document.getElementById('um-weekly-pay-row');
+  _payRow.style.display = '';
+  document.getElementById('um-weekly-pay').value = u?.weeklyPay ?? '';
   const _gamCb = document.getElementById('um-gamification');
   _gamCb.checked = u?.gamification || false;
   document.getElementById('um-gamification-label').textContent = _gamCb.checked ? 'On' : 'Off';
@@ -1731,12 +1774,13 @@ async function saveUser() {
       u.haEntity = haEntity; u.notifyEntity = notifyEntity;
       u.photo = _userPhotoData || null;
       u.gamification = document.getElementById('um-gamification').checked;
+      u.weeklyPay = parseFloat(document.getElementById('um-weekly-pay').value) || 0;
     }
   } else {
     D.users = D.users || [];
     const id = name.toLowerCase().replace(/\s+/g, '_') + '_' + uid().slice(0,4);
     const _newIsAdult = !age || age >= 18;
-    D.users.push({ id, name, color, emoji, age, isAdult: _newIsAdult, home: true, haEntity, notifyEntity, photo: _userPhotoData || null, gamification: document.getElementById('um-gamification').checked });
+    D.users.push({ id, name, color, emoji, age, isAdult: _newIsAdult, home: true, haEntity, notifyEntity, photo: _userPhotoData || null, gamification: document.getElementById('um-gamification').checked, weeklyPay: parseFloat(document.getElementById('um-weekly-pay').value) || 0 });
   }
 
   await pushData();
@@ -1798,12 +1842,20 @@ const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct
 
 let _editingChoreId = null;
 
+function saveChorePaySettings() {
+  D.settings = D.settings || {};
+  D.settings.chorePayDay = parseInt(document.getElementById('cfg-pay-day').value);
+  pushData().then(() => toast('Pocket money settings saved!'));
+}
+
 function renderChores() {
   const list   = document.getElementById('chore-list');
   const chores = D.chores || [];
   const users  = D.users  || [];
   document.getElementById('chore-count-label').textContent =
     `${chores.length} task${chores.length !== 1 ? 's' : ''} total`;
+  const payDaySel = document.getElementById('cfg-pay-day');
+  if (payDaySel) payDaySel.value = (D.settings || {}).chorePayDay ?? 6;
 
   list.innerHTML = '';
   if (!chores.length) {
@@ -2278,6 +2330,7 @@ function renderSettings() {
   document.getElementById('cfg-todo-entity').value    = s.todoEntity      || '';
   document.getElementById('cfg-poll').value           = s.pollIntervalSeconds || 30;
   document.getElementById('cfg-log-days').value        = s.choreLogDays ?? 10;
+  document.getElementById('cfg-pay-min-pct').value     = s.chorePayMinPct ?? 50;
   const dedup = s.calendarDedup !== false;
   document.getElementById('cfg-dedup').checked          = dedup;
   document.getElementById('cfg-dedup-label').textContent = dedup ? 'Enabled' : 'Disabled';
@@ -2311,6 +2364,7 @@ async function saveSettings() {
   D.settings.todoEntity            = document.getElementById('cfg-todo-entity').value.trim();
   D.settings.pollIntervalSeconds    = parseInt(document.getElementById('cfg-poll').value) || 30;
   D.settings.choreLogDays           = parseInt(document.getElementById('cfg-log-days').value) || 10;
+  D.settings.chorePayMinPct         = parseInt(document.getElementById('cfg-pay-min-pct').value) ?? 50;
   D.settings.calendarDedup          = document.getElementById('cfg-dedup').checked;
   D.settings.alldayExpand           = document.getElementById('cfg-allday-expand').checked;
   D.settings.timeFormat             = document.getElementById('cfg-time-format').value;

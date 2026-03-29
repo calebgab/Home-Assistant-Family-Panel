@@ -273,6 +273,19 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .chore-col-hdr { padding: 5px 8px; border-bottom: 1px solid var(--border); display: flex; flex-direction: row; align-items: center; gap: 5px; position: relative; }
 .chore-col-hdr-center { display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 0; }
 .chore-col-stat { font-size: 8px; font-weight: 700; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+/* ── POCKET MONEY ── */
+#pay-card { margin-top: 8px; }
+.pay-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.pay-row:last-child { border-bottom: none; }
+.pay-avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+.pay-info { flex: 1; min-width: 0; }
+.pay-name { font-size: 11px; font-weight: 700; color: var(--text); }
+.pay-detail { font-size: 9px; color: var(--muted); margin-top: 1px; }
+.pay-amount { font-size: 14px; font-weight: 800; flex-shrink: 0; }
+.pay-btn { font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 12px; border: 1px solid; cursor: pointer; font-family: inherit; flex-shrink: 0; transition: all var(--ease); }
+.pay-btn-pay { background: var(--gold-dim); border-color: rgba(232,168,64,.4); color: var(--gold); }
+.pay-btn-pay:hover { background: rgba(232,168,64,.25); }
+.pay-btn-paid { background: rgba(93,184,122,.12); border-color: rgba(93,184,122,.3); color: var(--green); cursor: default; }
 .chore-avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
 .chore-col-name { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; }
 .chore-items { padding: 5px 6px; max-height: 140px; overflow-y: auto; }
@@ -661,6 +674,10 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
         </div>
       </div>
       <div id="chores-grid"></div>
+    </div>
+    <div class="card" id="pay-card" style="display:none;">
+      <div class="card-header"><span>💰 Pocket Money</span></div>
+      <div id="pay-rows"></div>
     </div>
   </div>
 
@@ -1497,6 +1514,98 @@ function weeklyPoints(userId) {
     });
   });
   return total;
+}
+
+function weeklyPointsPossible(userId) {
+  const now = new Date();
+  const jsDay = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + (jsDay === 0 ? -6 : 1 - jsDay));
+  monday.setHours(0, 0, 0, 0);
+  let total = 0;
+  (D.chores || []).filter(c => c.userId === userId).forEach(c => {
+    const pts = chorePoints(c);
+    if (c.recur === 'daily') {
+      // Count how many resets occurred Mon–today
+      const resets = (c.resetTimes || ['00:00']).length;
+      total += pts * resets * 7;
+    } else if (c.recur === 'weekly') {
+      const days = c.days && c.days.length ? c.days : [0,1,2,3,4,5,6];
+      // Count how many of those days fall Mon–Sun this week
+      let count = 0;
+      days.forEach(d => {
+        const date = new Date(monday);
+        date.setDate(monday.getDate() + ((d + 6) % 7)); // shift Sun=0 to Mon=0 basis
+        if (date <= now || date.toDateString() === now.toDateString()) count++;
+      });
+      total += pts * Math.max(count, 1);
+    } else {
+      // monthly, yearly, once — count as 1 if chore is visible this week
+      if (isChoreVisible(c)) total += pts;
+    }
+  });
+  return total;
+}
+
+function isPaidThisWeek(user) {
+  const now = new Date();
+  const jsDay = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + (jsDay === 0 ? -6 : 1 - jsDay));
+  monday.setHours(0, 0, 0, 0);
+  return (user.payLog || []).some(e => new Date(e.date) >= monday);
+}
+
+async function markPaid(userId) {
+  const user = (D.users || []).find(u => u.id === userId);
+  if (!user) return;
+  const possible = weeklyPointsPossible(userId);
+  const earned   = weeklyPoints(userId);
+  const pct      = possible > 0 ? earned / possible : 0;
+  const minPct   = ((D.settings || {}).chorePayMinPct ?? 50) / 100;
+  const base     = user.weeklyPay || 0;
+  const amount   = pct >= minPct ? Math.round(base * pct * 100) / 100 : 0;
+  user.payLog = user.payLog || [];
+  user.payLog.unshift({ date: todayStr(), amount, pct: Math.round(pct * 100) });
+  await pushData();
+  renderPayCard();
+}
+
+function renderPayCard() {
+  const card = document.getElementById('pay-card');
+  const rowsEl = document.getElementById('pay-rows');
+  if (!card || !rowsEl) return;
+  const payDay = (D.settings || {}).chorePayDay ?? 6;
+  const isPayDay = new Date().getDay() === payDay;
+  const gamUsers = (D.users || []).filter(u => u.gamification && u.weeklyPay > 0);
+  if (!isPayDay || !gamUsers.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const minPct = ((D.settings || {}).chorePayMinPct ?? 50) / 100;
+  rowsEl.innerHTML = gamUsers.map(u => {
+    const bg = hexToRgba(u.color, 0.12);
+    const possible = weeklyPointsPossible(u.id);
+    const earned   = weeklyPoints(u.id);
+    const pct      = possible > 0 ? earned / possible : 0;
+    const pctDisp  = Math.round(pct * 100);
+    const base     = u.weeklyPay || 0;
+    const amount   = pct >= minPct ? Math.round(base * pct * 100) / 100 : 0;
+    const paid     = isPaidThisWeek(u);
+    const avatar   = u.photo
+      ? `<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
+      : (u.emoji || u.name[0]);
+    const amountColor = amount > 0 ? u.color : 'var(--muted)';
+    return `<div class="pay-row">
+      <div class="pay-avatar" style="background:${u.photo ? 'transparent' : bg};">${avatar}</div>
+      <div class="pay-info">
+        <div class="pay-name" style="color:${u.color}">${u.name}</div>
+        <div class="pay-detail">${pctDisp}% complete · ${earned}/${possible} pts${pct < minPct ? ' · below minimum' : ''}</div>
+      </div>
+      <div class="pay-amount" style="color:${amountColor};">$${amount.toFixed(2)}</div>
+      ${paid
+        ? `<div class="pay-btn pay-btn-paid">✓ Paid</div>`
+        : `<button class="pay-btn pay-btn-pay" onclick="markPaid('${u.id}')">Mark Paid</button>`}
+    </div>`;
+  }).join('');
 }
 
 function renderLeaderboard() {}
@@ -2814,6 +2923,7 @@ async function pollData() {
       D = fresh;
       renderCustomDashBtn();
       renderChores();
+      renderPayCard();
       renderReminders();
       // Re-apply theme in case settings changed
       const mode = D?.settings?.themeMode || _getCurrentMode();
@@ -3129,6 +3239,7 @@ async function init() {
     renderControls();
     renderSensors();
     renderChores();
+    renderPayCard();
     renderPresence();
     renderReminders();
     renderMonth();         // show month skeleton while calendar loads

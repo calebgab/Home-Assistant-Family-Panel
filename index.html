@@ -1521,6 +1521,14 @@ function renderChores() {
     return;
   }
 
+  const _medals = ['🥇','🥈','🥉'];
+  const _gamRanks = new Map(
+    users.filter(u => u.gamification)
+      .map(u => ({ u, pts: weeklyPoints(u.id) }))
+      .sort((a, b) => b.pts - a.pts)
+      .map(({ u }, i) => [u.id, _medals[i] || ''])
+  );
+
   users.forEach(u => {
     const userChores = sortChores(
       (D.chores || []).filter(c =>
@@ -1535,14 +1543,15 @@ function renderChores() {
     const _gam = u.gamification;
     const _streak = _gam ? computeStreak(u.id) : 0;
     const _pts = _gam ? weeklyPoints(u.id) : 0;
+    const _medal = _gam ? (_gamRanks.get(u.id) || '') : '';
     col.innerHTML = `
       <div class="chore-col-hdr">
-        ${_gam && _streak > 0 ? `<div class="chore-col-stat">🔥${_streak}</div>` : '<div style="flex-shrink:0;width:18px;"></div>'}
+        ${_gam && _streak > 0 ? `<div class="chore-col-stat">🔥${_streak}</div>` : '<div style="flex-shrink:0;width:20px;"></div>'}
         <div class="chore-col-hdr-center">
           <div class="chore-avatar" style="background:${u.photo ? 'transparent' : bg};${u.photo ? 'padding:0;overflow:hidden;' : ''}">${u.photo ? `<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (u.emoji || u.name[0])}</div>
           <div class="chore-col-name" style="color:${u.color}">${u.name}</div>
         </div>
-        ${_gam ? `<div class="chore-col-stat" style="color:${u.color};">${_pts}<span style="font-size:6px;font-weight:600;color:var(--muted);margin-left:1px;">pts</span></div>` : '<div style="flex-shrink:0;width:18px;"></div>'}
+        ${_gam ? `<div class="chore-col-stat" style="text-align:center;">${_medal ? `<div style="font-size:11px;line-height:1;">${_medal}</div>` : ''}<div style="font-size:11px;font-weight:800;color:${u.color};line-height:1;">${_pts}<span style="font-size:7px;font-weight:600;color:var(--muted);">pts</span></div></div>` : '<div style="flex-shrink:0;width:20px;"></div>'}
         <div class="chore-presence" id="presence-${u.id}">
           <div class="chore-presence-dot"></div>
           <span class="chore-presence-status">—</span>
@@ -1649,6 +1658,14 @@ function renderChoresOverlay() {
     return;
   }
 
+  const _csMedals = ['🥇','🥈','🥉'];
+  const _csRanks = new Map(
+    users.filter(u => u.gamification)
+      .map(u => ({ u, pts: weeklyPoints(u.id) }))
+      .sort((a, b) => b.pts - a.pts)
+      .map(({ u }, i) => [u.id, _csMedals[i] || ''])
+  );
+
   users.forEach(u => {
     const userChores = sortChores(
       (D.chores || []).filter(c =>
@@ -1667,11 +1684,12 @@ function renderChoresOverlay() {
     const _csGam = u.gamification;
     const _csStreak = _csGam ? computeStreak(u.id) : 0;
     const _csPts = _csGam ? weeklyPoints(u.id) : 0;
+    const _csMedal = _csGam ? (_csRanks.get(u.id) || '') : '';
     hdr.innerHTML = `
       ${_csGam && _csStreak > 0 ? `<div class="cs-streak">🔥 ${_csStreak}</div>` : ''}
       <div class="cs-avatar" style="background:${u.photo ? 'transparent' : bg};${u.photo ? 'padding:0;overflow:hidden;' : ''}">${u.photo ? `<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (u.emoji || u.name[0])}</div>
       <div class="cs-col-name" style="color:${u.color}">${u.name}</div>
-      ${_csGam ? `<div class="cs-streak" style="color:${u.color};">${_csPts}<span style="font-size:9px;font-weight:600;color:var(--muted);margin-left:1px;">pts</span></div>` : ''}
+      ${_csGam ? `<div style="text-align:center;">${_csMedal ? `<div style="font-size:14px;line-height:1;">${_csMedal}</div>` : ''}<div style="font-size:14px;font-weight:800;color:${u.color};line-height:1.2;">${_csPts}<span style="font-size:9px;font-weight:600;color:var(--muted);">pts</span></div></div>` : ''}
       ${u.haEntity ? `<div class="cs-presence" id="cs-presence-${u.id}">
         <div class="cs-presence-dot"></div>
         <span class="cs-presence-status">—</span>

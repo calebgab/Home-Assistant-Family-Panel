@@ -369,7 +369,8 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 #chores-sheet-body::-webkit-scrollbar { width: 3px; }
 #chores-sheet-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 /* Overlay chore col */
-.cs-col { min-width: 0; }
+.cs-col { min-width: 0; border-right: 1px solid var(--border); }
+.cs-col:last-child { border-right: none; }
 .cs-col-hdr {
   display: flex; align-items: center; flex-direction: column; gap: 6px;
   padding: 8px 4px 10px;

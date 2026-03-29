@@ -1522,12 +1522,19 @@ function renderChores() {
   }
 
   const _medals = ['🥇','🥈','🥉'];
-  const _gamRanks = new Map(
-    users.filter(u => u.gamification)
+  const _gamRanks = (() => {
+    const ranked = users.filter(u => u.gamification)
       .map(u => ({ u, pts: weeklyPoints(u.id) }))
-      .sort((a, b) => b.pts - a.pts)
-      .map(({ u }, i) => [u.id, _medals[i] || ''])
-  );
+      .sort((a, b) => b.pts - a.pts);
+    const map = new Map();
+    let tierIdx = 0, prevPts = null;
+    ranked.forEach(({ u, pts }) => {
+      if (pts === 0) { map.set(u.id, ''); return; }
+      if (pts !== prevPts) { prevPts = pts; tierIdx++; }
+      map.set(u.id, _medals[tierIdx - 1] || '');
+    });
+    return map;
+  })();
 
   users.forEach(u => {
     const userChores = sortChores(
@@ -1660,12 +1667,19 @@ function renderChoresOverlay() {
   }
 
   const _csMedals = ['🥇','🥈','🥉'];
-  const _csRanks = new Map(
-    users.filter(u => u.gamification)
+  const _csRanks = (() => {
+    const ranked = users.filter(u => u.gamification)
       .map(u => ({ u, pts: weeklyPoints(u.id) }))
-      .sort((a, b) => b.pts - a.pts)
-      .map(({ u }, i) => [u.id, _csMedals[i] || ''])
-  );
+      .sort((a, b) => b.pts - a.pts);
+    const map = new Map();
+    let tierIdx = 0, prevPts = null;
+    ranked.forEach(({ u, pts }) => {
+      if (pts === 0) { map.set(u.id, ''); return; }
+      if (pts !== prevPts) { prevPts = pts; tierIdx++; }
+      map.set(u.id, _csMedals[tierIdx - 1] || '');
+    });
+    return map;
+  })();
 
   users.forEach(u => {
     const userChores = sortChores(

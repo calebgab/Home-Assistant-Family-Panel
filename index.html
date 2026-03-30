@@ -1501,16 +1501,25 @@ function computeStreak(userId) {
   return streak;
 }
 
-function weeklyPoints(userId) {
+function weekStartDate() {
+  const s = D.settings || {};
+  const resetDay = s.choreResetEnabled ? (s.choreResetDay ?? 1) : 1;
   const now = new Date();
   const jsDay = now.getDay();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + (jsDay === 0 ? -6 : 1 - jsDay));
-  monday.setHours(0, 0, 0, 0);
+  const diff = (jsDay - resetDay + 7) % 7;
+  const start = new Date(now);
+  start.setDate(now.getDate() - diff);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+function weeklyPoints(userId) {
+  const now = new Date();
+  const weekStart = weekStartDate();
   let total = 0;
   (D.chores || []).filter(c => c.userId === userId).forEach(c => {
     (c.log || []).forEach(e => {
-      if (new Date(e.ts) >= monday && typeof e.points === 'number') total += e.points;
+      if (new Date(e.ts) >= weekStart && typeof e.points === 'number') total += e.points;
     });
   });
   return total;
@@ -1518,10 +1527,7 @@ function weeklyPoints(userId) {
 
 function weeklyPointsPossible(userId) {
   const now = new Date();
-  const jsDay = now.getDay();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + (jsDay === 0 ? -6 : 1 - jsDay));
-  monday.setHours(0, 0, 0, 0);
+  const monday = weekStartDate();
   let total = 0;
   (D.chores || []).filter(c => c.userId === userId).forEach(c => {
     const pts = chorePoints(c);
@@ -1548,12 +1554,7 @@ function weeklyPointsPossible(userId) {
 }
 
 function isPaidThisWeek(user) {
-  const now = new Date();
-  const jsDay = now.getDay();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + (jsDay === 0 ? -6 : 1 - jsDay));
-  monday.setHours(0, 0, 0, 0);
-  return (user.payLog || []).some(e => new Date(e.date) >= monday);
+  return (user.payLog || []).some(e => new Date(e.date) >= weekStartDate());
 }
 
 async function markPaid(userId) {

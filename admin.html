@@ -687,6 +687,36 @@ select option { background: var(--surface); }
         </div>
       </div>
 
+      <!-- Leaderboard Reset Settings -->
+      <div class="panel" style="margin-top:16px;">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Leaderboard Reset</div>
+            <div class="panel-sub">Choose which day the weekly points leaderboard resets. Points from before that day are excluded from the current week's totals.</div>
+          </div>
+        </div>
+        <div style="padding:12px 20px 16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="cfg-reset-enabled" onchange="document.getElementById('cfg-reset-day-row').style.display=this.checked?'flex':'none'" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer;">
+            <span style="font-size:12px;font-weight:600;color:var(--text);">Enable Weekly Reset</span>
+          </label>
+          <div id="cfg-reset-day-row" style="display:none;align-items:center;gap:8px;">
+            <label style="font-size:12px;font-weight:600;color:var(--text);">Reset day</label>
+            <select id="cfg-reset-day" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:5px 10px;outline:none;cursor:pointer;font-family:inherit;">
+              <option value="0">Sunday</option>
+              <option value="1" selected>Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4">Thursday</option>
+              <option value="5">Friday</option>
+              <option value="6">Saturday</option>
+            </select>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="saveChoreResetSettings()">Save</button>
+          <button class="btn btn-danger btn-sm" onclick="clearAllPoints()" style="margin-left:auto;">Clear All Points</button>
+        </div>
+      </div>
+
       <!-- Pocket Money Settings -->
       <div class="panel" style="margin-top:16px;">
         <div class="panel-header">
@@ -714,6 +744,17 @@ select option { background: var(--surface); }
           </div>
           <button class="btn btn-primary btn-sm" onclick="saveChorePaySettings()">Save</button>
         </div>
+      </div>
+
+      <!-- This Week's Progress -->
+      <div class="panel" style="margin-top:16px;">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">This Week's Progress</div>
+            <div class="panel-sub">How each child is tracking toward pocket money this week.</div>
+          </div>
+        </div>
+        <div id="pay-progress-list" style="padding:0 20px 8px;"></div>
       </div>
 
       <!-- Schedule Overview -->
@@ -1846,6 +1887,109 @@ const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct
 
 let _editingChoreId = null;
 
+// ── Gamification helpers (mirrored from index.html) ──────────────────────────
+function chorePoints(chore) {
+  return (typeof chore.points === 'number' && chore.points >= 0) ? chore.points : 10;
+}
+
+function weekStartDate() {
+  const s = D.settings || {};
+  const resetDay = s.choreResetEnabled ? (s.choreResetDay ?? 1) : 1;
+  const now = new Date();
+  const diff = (now.getDay() - resetDay + 7) % 7;
+  const start = new Date(now);
+  start.setDate(now.getDate() - diff);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+function weeklyPoints(userId) {
+  const weekStart = weekStartDate();
+  let total = 0;
+  (D.chores || []).filter(c => c.userId === userId).forEach(c => {
+    (c.log || []).forEach(e => {
+      if (new Date(e.ts) >= weekStart && typeof e.points === 'number') total += e.points;
+    });
+  });
+  return total;
+}
+
+function weeklyPointsPossible(userId) {
+  const now = new Date();
+  const monday = weekStartDate();
+  let total = 0;
+  (D.chores || []).filter(c => c.userId === userId).forEach(c => {
+    const pts = chorePoints(c);
+    if (c.recur === 'daily') {
+      const resets = (c.resetTimes || ['00:00']).length;
+      total += pts * resets * 7;
+    } else if (c.recur === 'weekly') {
+      const days = c.days && c.days.length ? c.days : [0,1,2,3,4,5,6];
+      let count = 0;
+      days.forEach(d => {
+        const date = new Date(monday);
+        date.setDate(monday.getDate() + ((d + 6) % 7));
+        if (date <= now || date.toDateString() === now.toDateString()) count++;
+      });
+      total += pts * Math.max(count, 1);
+    } else {
+      total += pts;
+    }
+  });
+  return total;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+function renderPayProgress() {
+  const wrap = document.getElementById('pay-progress-list');
+  if (!wrap) return;
+  const s = D.settings || {};
+  if (!s.chorePayEnabled) { wrap.innerHTML = '<p style="font-size:12px;color:var(--muted);padding:4px 0;">Pocket Money is disabled.</p>'; return; }
+  const minPct = typeof s.chorePayMinPct === 'number' ? s.chorePayMinPct : 50;
+  const users = (D.users || []).filter(u => u.gamification && u.weeklyPay > 0);
+  if (!users.length) { wrap.innerHTML = '<p style="font-size:12px;color:var(--muted);padding:4px 0;">No users with gamification and a weekly pay amount set.</p>'; return; }
+
+  wrap.innerHTML = users.map(u => {
+    const earned   = weeklyPoints(u.id);
+    const possible = weeklyPointsPossible(u.id);
+    const pct      = possible > 0 ? Math.round((earned / possible) * 100) : 0;
+    const qualifies = pct >= minPct;
+    const payout   = qualifies ? ((earned / possible) * u.weeklyPay).toFixed(2) : '0.00';
+    const barColor = qualifies ? 'var(--green)' : 'var(--gold)';
+    return `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">
+        <div style="width:36px;height:36px;border-radius:50%;background:${hexToRgba(u.color||'#888',0.18)};display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">${u.emoji||'👤'}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
+            <span style="font-size:13px;font-weight:600;color:var(--text);">${u.name}</span>
+            <span style="font-size:12px;color:var(--muted);white-space:nowrap;">${earned} / ${possible} pts &nbsp;·&nbsp; ${pct}%</span>
+          </div>
+          <div style="margin-top:5px;height:7px;border-radius:4px;background:var(--surface2);overflow:hidden;">
+            <div style="height:100%;width:${Math.min(pct,100)}%;background:${barColor};border-radius:4px;transition:width 0.3s;"></div>
+          </div>
+          <div style="margin-top:4px;font-size:11px;color:${qualifies?'var(--green)':'var(--faint)'};">
+            ${qualifies ? `On track — projected payout: <strong>$${payout}</strong>` : `Below ${minPct}% threshold — projected payout: <strong>$0.00</strong>`}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function saveChoreResetSettings() {
+  D.settings = D.settings || {};
+  D.settings.choreResetEnabled = document.getElementById('cfg-reset-enabled').checked;
+  D.settings.choreResetDay     = parseInt(document.getElementById('cfg-reset-day').value);
+  pushData().then(() => toast('Leaderboard reset settings saved!'));
+}
+
+async function clearAllPoints() {
+  if (!confirm('Clear all points logs from every chore? This cannot be undone.')) return;
+  (D.chores || []).forEach(c => { c.log = []; });
+  (D.users  || []).forEach(u => { u.payLog = []; });
+  await pushData();
+  toast('All points and pay logs cleared!');
+}
+
 function saveChorePaySettings() {
   D.settings = D.settings || {};
   D.settings.chorePayEnabled = document.getElementById('cfg-pay-enabled').checked;
@@ -1860,6 +2004,13 @@ function renderChores() {
   document.getElementById('chore-count-label').textContent =
     `${chores.length} task${chores.length !== 1 ? 's' : ''} total`;
   const s = D.settings || {};
+  const resetEnabled = !!s.choreResetEnabled;
+  const resetEnabledCb = document.getElementById('cfg-reset-enabled');
+  if (resetEnabledCb) {
+    resetEnabledCb.checked = resetEnabled;
+    document.getElementById('cfg-reset-day-row').style.display = resetEnabled ? 'flex' : 'none';
+    document.getElementById('cfg-reset-day').value = s.choreResetDay ?? 1;
+  }
   const payEnabled = !!s.chorePayEnabled;
   const payEnabledCb = document.getElementById('cfg-pay-enabled');
   if (payEnabledCb) {
@@ -1918,6 +2069,7 @@ function renderChores() {
   });
 
   renderChoreSchedule();
+  renderPayProgress();
 }
 
 function renderChoreSchedule() {

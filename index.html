@@ -291,7 +291,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .chore-items { padding: 5px 6px; max-height: 140px; overflow-y: auto; }
 .chore-items::-webkit-scrollbar { width: 2px; }
 .chore-items::-webkit-scrollbar-thumb { background: var(--border); border-radius: 1px; }
-.chore-item { display: flex; align-items: flex-start; gap: 6px; padding: 3px 2px; border-radius: 5px; cursor: pointer; transition: background var(--ease); margin-bottom: 1px; }
+.chore-item { display: flex; align-items: flex-start; gap: 6px; padding: 3px 2px; border-radius: 5px; cursor: pointer; transition: background var(--ease); margin-bottom: 1px; user-select: none; }
 .chore-item:hover { background: var(--surface2); }
 .chore-item.done .chore-label { opacity: .32; text-decoration: line-through; }
 .chore-check { width: 13px; height: 13px; border: 1.5px solid var(--border); border-radius: 3px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-top: 1px; transition: all var(--ease); background: transparent; }
@@ -406,6 +406,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   transition: background var(--ease);
   margin-bottom: 3px;
   -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 .cs-item:hover, .cs-item:active { background: var(--surface2); }
 .cs-item.done .cs-label { opacity: .35; text-decoration: line-through; }
@@ -1514,12 +1515,12 @@ function weekStartDate() {
 }
 
 function weeklyPoints(userId) {
-  const now = new Date();
   const weekStart = weekStartDate();
   let total = 0;
-  (D.chores || []).filter(c => c.userId === userId).forEach(c => {
+  (D.chores || []).forEach(c => {
     (c.log || []).forEach(e => {
-      if (new Date(e.ts) >= weekStart && typeof e.points === 'number') total += e.points;
+      const creditTo = e.doneBy || c.userId;
+      if (creditTo === userId && new Date(e.ts) >= weekStart && typeof e.points === 'number') total += e.points;
     });
   });
   return total;
@@ -1623,6 +1624,81 @@ function setChoreFilter(f, btn) {
   renderChores();
 }
 
+// ── Chore reassignment (long-press) ──────────────────────────────────────────
+function attachLongPress(item, onLongPress) {
+  let timer = null, fired = false, startX = 0, startY = 0;
+  item.addEventListener('pointerdown', e => {
+    fired = false; startX = e.clientX; startY = e.clientY;
+    timer = setTimeout(() => { fired = true; onLongPress(e); }, 600);
+  });
+  item.addEventListener('pointermove', e => {
+    if (Math.abs(e.clientX - startX) > 8 || Math.abs(e.clientY - startY) > 8) clearTimeout(timer);
+  });
+  ['pointerup', 'pointercancel'].forEach(ev => item.addEventListener(ev, () => clearTimeout(timer)));
+  item.addEventListener('click', e => { if (fired) { e.stopImmediatePropagation(); fired = false; } }, true);
+}
+
+function showReassignPicker(choreId, assignedUserId, anchorEl) {
+  closeReassignPicker();
+  const users = (D.users || []).filter(u => u.id !== assignedUserId);
+  if (!users.length) return;
+  const popup = document.createElement('div');
+  popup.id = 'reassign-picker';
+  popup.style.cssText = 'position:fixed;z-index:500;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px;box-shadow:0 8px 32px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:4px;min-width:160px;';
+  const title = document.createElement('div');
+  title.style.cssText = 'font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);padding-bottom:4px;border-bottom:1px solid var(--border);margin-bottom:2px;';
+  title.textContent = 'Who did this?';
+  popup.appendChild(title);
+  users.forEach(u => {
+    const chip = document.createElement('div');
+    chip.style.cssText = 'display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;cursor:pointer;';
+    const bg = hexToRgba(u.color || '#888', 0.15);
+    chip.innerHTML = `<div style="width:26px;height:26px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">${u.photo ? `<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : (u.emoji || u.name[0])}</div><span style="font-size:13px;font-weight:600;color:var(--text);">${u.name}</span>`;
+    chip.addEventListener('mouseenter', () => chip.style.background = 'var(--surface2)');
+    chip.addEventListener('mouseleave', () => chip.style.background = '');
+    chip.addEventListener('click', async e => { e.stopPropagation(); closeReassignPicker(); await doReassignChore(choreId, u.id); });
+    popup.appendChild(chip);
+  });
+  document.body.appendChild(popup);
+  const rect = anchorEl.getBoundingClientRect();
+  const pw = 170, ph = users.length * 46 + 44;
+  let left = rect.right + 8, top = rect.top;
+  if (left + pw > window.innerWidth - 8) left = rect.left - pw - 8;
+  if (top + ph > window.innerHeight - 8) top = window.innerHeight - ph - 8;
+  popup.style.left = Math.max(8, left) + 'px';
+  popup.style.top  = Math.max(8, top)  + 'px';
+  setTimeout(() => document.addEventListener('pointerdown', _reassignOutside, { once: true }), 50);
+}
+
+function _reassignOutside(e) {
+  const p = document.getElementById('reassign-picker');
+  if (p && !p.contains(e.target)) closeReassignPicker();
+  else if (p) setTimeout(() => document.addEventListener('pointerdown', _reassignOutside, { once: true }), 50);
+}
+
+function closeReassignPicker() {
+  const p = document.getElementById('reassign-picker');
+  if (p) p.remove();
+}
+
+async function doReassignChore(choreId, subUserId) {
+  const c = (D.chores || []).find(x => x.id === choreId);
+  if (!c) return;
+  c.done = true;
+  c.doneDate = todayStr();
+  c.log = c.log || [];
+  const ts = localTimestamp();
+  c.log.unshift({ ts, label: c.label, points: chorePoints(c), doneBy: subUserId });
+  const maxDays = D?.settings?.choreLogDays ?? 10;
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - maxDays);
+  c.log = c.log.filter(e => new Date(e.ts) >= cutoff);
+  await pushData();
+  renderChores();
+  const ov = document.getElementById('chores-overlay');
+  if (ov && ov.style.display !== 'none') renderChoresOverlay();
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function renderChores() {
   const users = D.users || [];
   const grid  = document.getElementById('chores-grid');
@@ -1723,6 +1799,7 @@ function renderChores() {
         await pushData();
         renderChores();
       };
+      if (!ch.done) attachLongPress(item, () => showReassignPicker(ch.id, ch.userId, item));
       items.appendChild(item);
     });
   });
@@ -1877,6 +1954,7 @@ function renderChoresOverlay() {
           renderChores();
           renderChoresOverlay();
         };
+        if (!ch.done) attachLongPress(item, () => showReassignPicker(ch.id, ch.userId, item));
         col.appendChild(item);
       });
     }

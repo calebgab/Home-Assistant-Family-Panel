@@ -1906,9 +1906,10 @@ function weekStartDate() {
 function weeklyPoints(userId) {
   const weekStart = weekStartDate();
   let total = 0;
-  (D.chores || []).filter(c => c.userId === userId).forEach(c => {
+  (D.chores || []).forEach(c => {
     (c.log || []).forEach(e => {
-      if (new Date(e.ts) >= weekStart && typeof e.points === 'number') total += e.points;
+      const creditTo = e.doneBy || c.userId;
+      if (creditTo === userId && new Date(e.ts) >= weekStart && typeof e.points === 'number') total += e.points;
     });
   });
   return total;

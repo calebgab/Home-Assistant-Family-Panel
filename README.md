@@ -35,6 +35,22 @@ A self-hosted family dashboard built on top of [Home Assistant](https://www.home
   - Notify when a chore is **completed**
   - Notify when a chore **becomes active** / resets into the list
 - Fullscreen overlay view of all chores with filter by recurrence type
+- **Reassign a chore** - press and hold any undone chore for ~600ms to credit it to a different family member (e.g. when one kid does another's chore). The chore is still marked complete and can't be done again; points go to whoever actually did it.
+
+### 🏆 Gamification
+- **Points per chore** - each chore has a configurable point value (default 10); earned on completion
+- **Weekly leaderboard** - embedded in each person's column header showing their points tally for the current week; top scorers are awarded 🥇🥈🥉 medals (ties share the same medal; 0 points = no medal)
+- **Streaks** - consecutive days where at least one chore was completed, shown as 🔥 in the column header
+- **Reassign credit** - points always go to whoever actually did the chore (see reassign feature above)
+- **Configurable per person** - gamification can be enabled/disabled per family member in the admin User settings
+- **Weekly reset** - leaderboard resets on a configurable day of the week (Admin → Chores → Leaderboard Reset); can also be cleared manually at any time
+
+### 💰 Pocket Money
+- **Points-based payout** - pocket money is calculated as `(points earned ÷ points possible) × weekly amount`, but only if the child clears a configurable minimum % threshold (e.g. 50%)
+- **Configurable weekly amount** - set per person in the admin User settings
+- **Pay day** - a pay card appears on the dashboard on the configured pay day (default Saturday) showing each eligible child's projected payout and a Mark Paid button
+- **Weekly progress panel** - visible in Admin → Chores at all times, showing each child's current points earned vs possible, % completion, progress bar, and projected payout
+- **Enable/disable** - pocket money can be toggled on/off globally in Admin → Chores
 
 ### 🛒 Shopping List
 - Backed by a Home Assistant `todo.*` entity

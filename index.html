@@ -1184,18 +1184,20 @@ function renderChoreLog() {
   // Collect all log entries
   const entries = [];
   chores.forEach(ch => {
-    const user = users.find(u => u.id === ch.userId);
-    // Person filter
-    if (_logPersonFilter && ch.userId !== _logPersonFilter) return;
+    const assignedUser = users.find(u => u.id === ch.userId);
     // Search filter
     if (search && !ch.label.toLowerCase().includes(search)) return;
 
     (ch.log || []).forEach(e => {
-      entries.push({ ts: e.ts, choreLabel: ch.label, userName: user?.name || '?', userColor: user?.color || '#888', userPhoto: user?.photo || null, userEmoji: user?.emoji || '' });
+      const actor = e.doneBy ? (users.find(u => u.id === e.doneBy) || assignedUser) : assignedUser;
+      // Person filter: match on whoever actually did it
+      if (_logPersonFilter && (actor?.id || ch.userId) !== _logPersonFilter) return;
+      entries.push({ ts: e.ts, choreLabel: ch.label, userName: actor?.name || '?', userColor: actor?.color || '#888', userPhoto: actor?.photo || null, userEmoji: actor?.emoji || '' });
     });
     // Legacy: done but no log array yet
     if (ch.done && ch.doneDate && !(ch.log||[]).length) {
-      entries.push({ ts: ch.doneDate + ' 00:00', choreLabel: ch.label, userName: user?.name || '?', userColor: user?.color || '#888', userPhoto: user?.photo || null, userEmoji: user?.emoji || '' });
+      if (_logPersonFilter && ch.userId !== _logPersonFilter) return;
+      entries.push({ ts: ch.doneDate + ' 00:00', choreLabel: ch.label, userName: assignedUser?.name || '?', userColor: assignedUser?.color || '#888', userPhoto: assignedUser?.photo || null, userEmoji: assignedUser?.emoji || '' });
     }
   });
 

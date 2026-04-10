@@ -59,6 +59,27 @@ function getLiveData() {
   try { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); }
   catch { return {}; }
 }
+
+function recordBlockedIP(clientIP) {
+  try {
+    const data = getLiveData();
+    data.settings = data.settings || {};
+    const log = data.settings.blockedIPLog || [];
+    const now = new Date().toISOString();
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    // Prune entries older than 7 days
+    const pruned = log.filter(e => (e.lastSeen || e.firstSeen || '') >= cutoff);
+    const existing = pruned.find(e => e.ip === clientIP);
+    if (existing) {
+      existing.lastSeen = now;
+      existing.count = (existing.count || 1) + 1;
+    } else {
+      pruned.push({ ip: clientIP, firstSeen: now, lastSeen: now, count: 1 });
+    }
+    data.settings.blockedIPLog = pruned;
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
+  } catch { /* non-fatal */ }
+}
 function getCalendars()     { const d = getLiveData(); return d.calendars     || CALENDARS_STATIC; }
 function getStateEntities() {
   const d = getLiveData();
@@ -319,6 +340,7 @@ const server = http.createServer(async (req, res) => {
       const allowedIPStrings = allowedIPs.map(e => (typeof e === 'string' ? e : e.ip));
       if (!isLocal && !allowedIPStrings.includes(clientIP)) {
         console.warn(`  ✗ IP blocked: ${clientIP} — not in allowlist`);
+        recordBlockedIP(clientIP);
         const isPage = !pathname.startsWith('/api/');
         if (isPage) {
           res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });

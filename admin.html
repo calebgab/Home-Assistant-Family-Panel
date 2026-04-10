@@ -1050,6 +1050,18 @@ select option { background: var(--surface); }
         </div>
         <div id="ip-list" style="padding:0 20px;min-height:40px;"></div>
       </div>
+
+      <!-- Blocked IPs -->
+      <div class="panel" style="margin-top:16px;">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Blocked IPs</div>
+            <div class="panel-sub">Devices that have been denied access. Entries expire after 7 days. Click "Add to Allowlist" to grant a device access.</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="clearBlockedIPLog()">Clear All</button>
+        </div>
+        <div id="blocked-ip-list" style="padding:0 20px;min-height:40px;"></div>
+      </div>
     </div>
 
     <!-- ══════════════ APPEARANCE ══════════════ -->
@@ -2511,6 +2523,7 @@ function renderSettings() {
   document.getElementById('cfg-show-moon').checked          = showMoon;
   document.getElementById('cfg-show-moon-label').textContent = showMoon ? 'Enabled' : 'Disabled';
   renderIPList();
+  renderBlockedIPList();
 }
 
 // SHA-256 via Web Crypto (no server round-trip needed)
@@ -3045,13 +3058,69 @@ function renderIPList() {
 
 let _editingIPIdx = null;
 
-function openAddIPModal() {
+function openAddIPModal(prefillIP = '') {
   _editingIPIdx = null;
   document.getElementById('ip-modal-title').textContent = 'Add IP Address';
-  document.getElementById('ip-input').value = '';
+  document.getElementById('ip-input').value = prefillIP;
   document.getElementById('ip-label-input').value = '';
   openModal('ip-modal');
-  setTimeout(() => document.getElementById('ip-input').focus(), 50);
+  setTimeout(() => document.getElementById(prefillIP ? 'ip-label-input' : 'ip-input').focus(), 50);
+}
+
+async function renderBlockedIPList() {
+  const wrap = document.getElementById('blocked-ip-list');
+  if (!wrap) return;
+  wrap.innerHTML = '<div style="padding:14px 0;font-size:12px;color:var(--muted);">Loading…</div>';
+  let freshData;
+  try {
+    const r = await fetch('/api/data');
+    freshData = await r.json();
+    // Sync blockedIPLog back into D so dismissals work correctly
+    if (freshData?.settings?.blockedIPLog) D.settings = D.settings || {};
+    if (freshData?.settings?.blockedIPLog) D.settings.blockedIPLog = freshData.settings.blockedIPLog;
+  } catch {
+    freshData = D;
+  }
+  const log = (freshData?.settings?.blockedIPLog || []).slice().sort((a, b) => (b.lastSeen || '').localeCompare(a.lastSeen || ''));
+  const allowedIPStrings = (freshData?.settings?.allowedIPs || []).map(e => typeof e === 'string' ? e : e.ip);
+  if (!log.length) {
+    wrap.innerHTML = '<div style="padding:14px 0;font-size:12px;color:var(--muted);">No blocked IPs recorded.</div>';
+    return;
+  }
+  wrap.innerHTML = '';
+  log.forEach(entry => {
+    const isAllowed = allowedIPStrings.includes(entry.ip);
+    const lastSeen  = entry.lastSeen ? new Date(entry.lastSeen).toLocaleString() : '—';
+    const firstSeen = entry.firstSeen ? new Date(entry.firstSeen).toLocaleDateString() : '—';
+    const row = document.createElement('div');
+    row.className = 'chore-list-row';
+    row.innerHTML = `
+      <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:var(--red,#ef4444);fill:none;stroke-width:2;flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
+      <div style="flex:1;min-width:0;">
+        <span style="font-family:monospace;font-size:13px;">${entry.ip}</span>
+        <span style="font-size:11px;color:var(--muted);margin-left:8px;">${entry.count || 1} attempt${(entry.count || 1) !== 1 ? 's' : ''}</span>
+        <div style="font-size:10px;color:var(--faint);margin-top:1px;">First: ${firstSeen} · Last: ${lastSeen}</div>
+      </div>
+      ${isAllowed ? '<span style="font-size:10px;background:var(--gold-dim);color:var(--gold);padding:2px 8px;border-radius:10px;font-weight:600;white-space:nowrap;">in allowlist</span>' : `<button class="btn btn-secondary btn-xs" onclick="openAddIPModal('${entry.ip}')">Add to Allowlist</button>`}
+      <button class="btn btn-danger btn-xs" onclick="dismissBlockedIP('${entry.ip}')">✕</button>`;
+    wrap.appendChild(row);
+  });
+}
+
+async function dismissBlockedIP(ip) {
+  D.settings = D.settings || {};
+  D.settings.blockedIPLog = (D.settings.blockedIPLog || []).filter(e => e.ip !== ip);
+  await pushData();
+  renderBlockedIPList();
+}
+
+async function clearBlockedIPLog() {
+  if (!(D.settings?.blockedIPLog?.length)) return;
+  if (!confirm('Clear all blocked IP records?')) return;
+  D.settings.blockedIPLog = [];
+  await pushData();
+  renderBlockedIPList();
+  toast('Blocked IP log cleared');
 }
 
 function openEditIPModal(idx) {
@@ -3079,9 +3148,14 @@ async function saveIP() {
     if (D.settings.allowedIPs.some(e => e.ip === raw)) { toast('IP already in list', 'err'); return; }
     D.settings.allowedIPs.push({ ip: raw, label });
   }
+  // Remove from blocked log if it was there
+  if (D.settings.blockedIPLog) {
+    D.settings.blockedIPLog = D.settings.blockedIPLog.filter(e => e.ip !== raw);
+  }
   await pushData();
   closeModal('ip-modal');
   renderIPList();
+  renderBlockedIPList();
   toast(`${raw} ${_editingIPIdx !== null ? 'updated' : 'added to allowlist'}`);
 }
 
@@ -3093,6 +3167,7 @@ async function deleteIP(idx) {
   D.settings.allowedIPs.splice(idx, 1);
   await pushData();
   renderIPList();
+  renderBlockedIPList();
   toast(`${entry.ip} removed`);
 }
 

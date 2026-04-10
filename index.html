@@ -567,7 +567,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   position: absolute; bottom: 84px; left: 48px; z-index: 10;
   background: rgba(0,0,0,.72); backdrop-filter: blur(12px);
   border: 1px solid rgba(255,255,255,.12); border-radius: 14px;
-  padding: 16px 20px; min-width: 220px; max-width: 340px;
+  padding: 16px 20px; width: 320px;
   color: #fff; display: none;
 }
 #pf-info-panel.open { display: block; }
@@ -3311,13 +3311,26 @@ function pfBuildInfo(asset) {
     rows.push(['🌐', 'Coordinates', `${asset.latitude.toFixed(4)}, ${asset.longitude.toFixed(4)}`]);
   }
 
-  if (!rows.length) return '<div style="color:rgba(255,255,255,.5);font-size:12px;">No metadata available.</div>';
+  if (!rows.length && asset.latitude == null) return '<div style="color:rgba(255,255,255,.5);font-size:12px;">No metadata available.</div>';
 
-  return rows.map(([icon, label, val]) => `
+  const metaHtml = rows.map(([icon, label, val]) => `
     <div class="pf-info-row">
       <span class="pf-info-icon">${icon}</span>
       <div><span class="pf-info-label">${label}</span><span class="pf-info-val">${val}</span></div>
     </div>`).join('');
+
+  let mapHtml = '';
+  if (asset.latitude != null && asset.longitude != null) {
+    const lat = asset.latitude, lon = asset.longitude;
+    const delta = 0.02;
+    const bbox = `${lon - delta},${lat - delta},${lon + delta},${lat + delta}`;
+    const src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lon}`;
+    mapHtml = `<div style="margin-top:10px;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.12);">
+      <iframe src="${src}" width="100%" height="180" style="display:block;border:none;" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe>
+    </div>`;
+  }
+
+  return metaHtml + mapHtml;
 }
 // ─────────────────────────────────────────────────────────
 

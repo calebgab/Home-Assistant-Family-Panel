@@ -552,6 +552,29 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   animation: hintFade 4s ease 3s both;
 }
 @keyframes hintFade { from { opacity:0 } 20% { opacity:1 } 80% { opacity:1 } to { opacity:0 } }
+
+/* Photo info button + panel */
+#pf-info-btn {
+  position: absolute; bottom: 36px; left: 48px; z-index: 10;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.2);
+  color: rgba(255,255,255,.7); font-size: 18px; line-height: 1;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background .2s, color .2s;
+}
+#pf-info-btn:hover { background: rgba(0,0,0,.7); color: #fff; }
+#pf-info-panel {
+  position: absolute; bottom: 84px; left: 48px; z-index: 10;
+  background: rgba(0,0,0,.72); backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,.12); border-radius: 14px;
+  padding: 16px 20px; min-width: 220px; max-width: 340px;
+  color: #fff; display: none;
+}
+#pf-info-panel.open { display: block; }
+#pf-info-content .pf-info-row { display: flex; gap: 8px; margin-bottom: 7px; align-items: flex-start; }
+#pf-info-content .pf-info-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+#pf-info-content .pf-info-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: rgba(255,255,255,.45); display: block; margin-bottom: 1px; }
+#pf-info-content .pf-info-val { font-size: 13px; color: #fff; line-height: 1.3; }
 </style>
 </head>
 <body>
@@ -565,6 +588,10 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
     <div id="pf-date">Monday, 1 January</div>
   </div>
   <div id="pf-hint">Tap to return to dashboard</div>
+  <button id="pf-info-btn" onclick="pfToggleInfo(event)" title="Photo info">ℹ</button>
+  <div id="pf-info-panel">
+    <div id="pf-info-content"></div>
+  </div>
 </div>
 
 <div id="loading-overlay">
@@ -3058,12 +3085,13 @@ function calRangeForMonth(date) {
 //  PHOTO FRAME
 // ═══════════════════════════════════════════════════════════
 let pfActive       = false;
-let pfAssets       = [];
+let pfAssets       = [];   // array of asset objects {id, localDateTime, city, …}
 let pfIndex        = 0;
 let pfSlideTimer   = null;
 let pfClockTimer   = null;
 let pfIdleTimer    = null;
 let pfCurrent      = 'a';   // which slide slot is visible
+let pfCurrentAsset = null;  // metadata for the currently visible photo
 
 const pfEl    = () => document.getElementById('photoframe');
 const pfSlotA = () => document.getElementById('pf-slide-a');
@@ -3163,9 +3191,10 @@ async function enterPhotoFrame() {
   pfSlotB().style.backgroundImage = '';
 
   // Load and show first photo
-  const loaded = await pfShowSlide(pfSlotA(), pfAssets[pfIndex]);
+  pfCurrentAsset = pfAssets[pfIndex];
+  const loaded = await pfShowSlide(pfSlotA(), pfCurrentAsset);
   if (!loaded) {
-    console.warn('Photo frame: first image failed to load, asset ID:', pfAssets[pfIndex]);
+    console.warn('Photo frame: first image failed to load, asset:', pfCurrentAsset?.id);
   }
   pfSlotA().classList.add('visible', 'kb');
 
@@ -3181,6 +3210,10 @@ async function enterPhotoFrame() {
 
 function pfHandleTap(e) {
   if (!pfActive) return;
+  // Don't handle taps on the info button or panel
+  if (e.target.closest('#pf-info-btn, #pf-info-panel')) return;
+  // Close info panel on any zone tap
+  pfInfoClose();
   const tapZones = D?.settings?.frameTapZones !== false;
   if (!tapZones) { exitPhotoFrame(); return; }
 
@@ -3208,6 +3241,7 @@ function exitPhotoFrame() {
   pfActive = false;
   clearTimeout(pfSlideTimer);
   clearInterval(pfClockTimer);
+  pfInfoClose();
   pfEl().classList.remove('active');
   pfSlotA().className = 'pf-slide';
   pfSlotB().className = 'pf-slide';
@@ -3215,6 +3249,77 @@ function exitPhotoFrame() {
   pfEl().removeEventListener('touchend', pfHandleTap);
   resetIdleTimer();
 }
+
+// ── Photo info panel ─────────────────────────────────────
+function pfToggleInfo(e) {
+  e.stopPropagation();
+  const panel = document.getElementById('pf-info-panel');
+  if (panel.classList.contains('open')) { pfInfoClose(); return; }
+  const content = document.getElementById('pf-info-content');
+  content.innerHTML = pfBuildInfo(pfCurrentAsset);
+  panel.classList.add('open');
+}
+
+function pfInfoClose() {
+  document.getElementById('pf-info-panel')?.classList.remove('open');
+}
+
+function pfBuildInfo(asset) {
+  if (!asset) return '<div style="color:rgba(255,255,255,.5);font-size:12px;">No metadata available.</div>';
+  const rows = [];
+
+  // Date — parse components directly from the ISO string to avoid timezone conversion.
+  // Immich's localDateTime is already the local time the photo was taken (from EXIF),
+  // so we must not let Date() reinterpret it as UTC.
+  if (asset.localDateTime) {
+    const m = asset.localDateTime.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    if (m) {
+      const [, yr, mo, dy, hr, mn] = m;
+      // Reconstruct as a local-time Date by using numeric parts (avoids UTC ambiguity)
+      const d = new Date(+yr, +mo - 1, +dy, +hr, +mn);
+      const dateStr = d.toLocaleDateString(undefined, { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+      const timeStr = d.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
+      rows.push(['📅', 'Date', `${dateStr} at ${timeStr}`]);
+    }
+  }
+
+  // Location — specific place name first, then city/state/country
+  const parts = [asset.city, asset.state, asset.country].filter(Boolean);
+  if (parts.length) rows.push(['📍', 'Location', parts.join(', ')]);
+
+  // Description
+  if (asset.description) rows.push(['💬', 'Description', asset.description]);
+
+  // Camera
+  if (asset.make || asset.model) {
+    const cam = [asset.make, asset.model].filter(Boolean).join(' ');
+    rows.push(['📷', 'Camera', cam]);
+  }
+  if (asset.lensModel) rows.push(['🔭', 'Lens', asset.lensModel]);
+
+  // Exposure
+  const exposure = [
+    asset.fNumber   != null ? `ƒ/${asset.fNumber}` : null,
+    asset.exposureTime      ? `${asset.exposureTime}s` : null,
+    asset.iso       != null ? `ISO ${asset.iso}` : null,
+    asset.focalLength != null ? `${asset.focalLength}mm` : null,
+  ].filter(Boolean);
+  if (exposure.length) rows.push(['⚙️', 'Exposure', exposure.join('  ·  ')]);
+
+  // Coordinates (only if no named location already shown)
+  if (!parts.length && asset.latitude != null && asset.longitude != null) {
+    rows.push(['🌐', 'Coordinates', `${asset.latitude.toFixed(4)}, ${asset.longitude.toFixed(4)}`]);
+  }
+
+  if (!rows.length) return '<div style="color:rgba(255,255,255,.5);font-size:12px;">No metadata available.</div>';
+
+  return rows.map(([icon, label, val]) => `
+    <div class="pf-info-row">
+      <span class="pf-info-icon">${icon}</span>
+      <div><span class="pf-info-label">${label}</span><span class="pf-info-val">${val}</span></div>
+    </div>`).join('');
+}
+// ─────────────────────────────────────────────────────────
 
 async function pfGoPrev() {
   if (!pfActive) return;
@@ -3224,7 +3329,9 @@ async function pfGoPrev() {
   const nextSlot = pfCurrent === 'a' ? pfSlotB() : pfSlotA();
   const currSlot = pfCurrent === 'a' ? pfSlotA() : pfSlotB();
 
-  await pfShowSlide(nextSlot, pfAssets[pfIndex]);
+  pfCurrentAsset = pfAssets[pfIndex];
+  await pfShowSlide(nextSlot, pfCurrentAsset);
+  pfInfoClose();
   nextSlot.classList.add('kb');
   requestAnimationFrame(() => {
     nextSlot.classList.add('visible');
@@ -3238,7 +3345,8 @@ async function pfGoPrev() {
 }
 
 // ── Slide management ─────────────────────────────────────
-function pfShowSlide(slotEl, assetId) {
+function pfShowSlide(slotEl, asset) {
+  const assetId = typeof asset === 'string' ? asset : asset.id;
   return new Promise(resolve => {
     const url = `/api/immich/photo/${assetId}`;
     const img = new Image();
@@ -3246,7 +3354,7 @@ function pfShowSlide(slotEl, assetId) {
       slotEl.style.backgroundImage = `url('${url}')`;
       resolve(true);
     };
-    img.onerror = (e) => {
+    img.onerror = () => {
       console.warn(`Photo frame: failed to load image for asset ${assetId} via ${url}`);
       slotEl.style.backgroundImage = '';
       resolve(false);
@@ -3268,7 +3376,9 @@ async function pfAdvance() {
   const nextSlot = pfCurrent === 'a' ? pfSlotB() : pfSlotA();
   const currSlot = pfCurrent === 'a' ? pfSlotA() : pfSlotB();
 
-  await pfShowSlide(nextSlot, pfAssets[pfIndex]);
+  pfCurrentAsset = pfAssets[pfIndex];
+  await pfShowSlide(nextSlot, pfCurrentAsset);
+  pfInfoClose();
   nextSlot.classList.add('kb');
 
   // Fade in next, fade out current

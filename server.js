@@ -959,13 +959,29 @@ Add it in <strong>Admin → Settings → IP Allowlist</strong> from an authorise
 
       // Include IMAGE type and Live Photos (which Immich stores as IMAGE with a livePhotoVideoId)
       // Exclude pure video assets and trashed items
-      const assets = (r.body.assets || [])
-        .filter(a => a.type === 'IMAGE' && !a.isTrashed)
-        .map(a => a.id);
-
-      // Log breakdown for diagnostics
       const all    = r.body.assets || [];
       const byType = all.reduce((acc, a) => { acc[a.type] = (acc[a.type] || 0) + 1; return acc; }, {});
+      const assets = all
+        .filter(a => a.type === 'IMAGE' && !a.isTrashed)
+        .map(a => ({
+          id:            a.id,
+          localDateTime: a.localDateTime || a.fileCreatedAt || null,
+          city:          a.exifInfo?.city       || null,
+          state:         a.exifInfo?.state      || null,
+          country:       a.exifInfo?.country    || null,
+          make:          a.exifInfo?.make        || null,
+          model:         a.exifInfo?.model       || null,
+          lensModel:     a.exifInfo?.lensModel   || null,
+          fNumber:       a.exifInfo?.fNumber     ?? null,
+          exposureTime:  a.exifInfo?.exposureTime || null,
+          iso:           a.exifInfo?.iso          ?? null,
+          focalLength:   a.exifInfo?.focalLength  ?? null,
+          latitude:      a.exifInfo?.latitude     ?? null,
+          longitude:     a.exifInfo?.longitude    ?? null,
+          description:   a.exifInfo?.description  || a.description || null,
+          fileName:      a.originalFileName       || null,
+        }));
+
       console.log(`  Photo frame: album has ${all.length} assets — ${JSON.stringify(byType)} — serving ${assets.length} images`);
 
       // Fisher-Yates shuffle

@@ -1549,12 +1549,16 @@ select option { background: var(--surface); }
 <!-- ADD IP MODAL -->
 <div class="modal-overlay" id="ip-modal">
   <div class="modal">
-    <h3>Add IP Address</h3>
-    <div class="form-group" style="margin-bottom:4px;">
+    <h3 id="ip-modal-title">Add IP Address</h3>
+    <div class="form-group" style="margin-bottom:12px;">
       <label class="form-label">IP Address</label>
       <input type="text" id="ip-input" placeholder="e.g. 192.168.1.50" onkeydown="if(event.key==='Enter')saveIP()">
     </div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;">Enter the static IP of the device you want to allow (tablet, phone, etc.)</div>
+    <div class="form-group" style="margin-bottom:4px;">
+      <label class="form-label">Description <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--faint);">(optional)</span></label>
+      <input type="text" id="ip-label-input" placeholder="e.g. Living Room Tablet" onkeydown="if(event.key==='Enter')saveIP()">
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;">Enter the static IP of the device you want to allow.</div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('ip-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="saveIP()">Add</button>
@@ -3014,55 +3018,82 @@ async function saveSlot() {
 // ═══════════════════════════════════════════════════════════
 //  IP ALLOWLIST
 // ═══════════════════════════════════════════════════════════
+function _ipEntry(e) { return typeof e === 'string' ? { ip: e, label: '' } : e; }
+
 function renderIPList() {
   const list = document.getElementById('ip-list');
-  const ips  = D.settings?.allowedIPs || [];
+  const ips  = (D.settings?.allowedIPs || []).map(_ipEntry);
   if (!ips.length) {
     list.innerHTML = '<div style="padding:14px 0;font-size:12px;color:var(--muted);">No IPs configured — all LAN devices can access the dashboard.</div>';
     return;
   }
   list.innerHTML = '';
-  ips.forEach((ip, idx) => {
+  ips.forEach((entry, idx) => {
     const row = document.createElement('div');
     row.className = 'chore-list-row';
     row.innerHTML = `
       <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:var(--green);fill:none;stroke-width:2;flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
-      <span style="font-family:monospace;font-size:13px;flex:1;">${ip}</span>
+      <div style="flex:1;min-width:0;">
+        <span style="font-family:monospace;font-size:13px;">${entry.ip}</span>
+        ${entry.label ? `<span style="font-size:11px;color:var(--muted);margin-left:8px;">${entry.label}</span>` : ''}
+      </div>
+      <button class="btn btn-secondary btn-xs" onclick="openEditIPModal(${idx})">Edit</button>
       <button class="btn btn-danger btn-xs" onclick="deleteIP(${idx})">✕</button>`;
     list.appendChild(row);
   });
 }
 
+let _editingIPIdx = null;
+
 function openAddIPModal() {
+  _editingIPIdx = null;
+  document.getElementById('ip-modal-title').textContent = 'Add IP Address';
   document.getElementById('ip-input').value = '';
+  document.getElementById('ip-label-input').value = '';
   openModal('ip-modal');
   setTimeout(() => document.getElementById('ip-input').focus(), 50);
 }
 
+function openEditIPModal(idx) {
+  _editingIPIdx = idx;
+  const entry = _ipEntry((D.settings?.allowedIPs || [])[idx]);
+  document.getElementById('ip-modal-title').textContent = 'Edit IP Address';
+  document.getElementById('ip-input').value = entry.ip;
+  document.getElementById('ip-label-input').value = entry.label || '';
+  openModal('ip-modal');
+  setTimeout(() => document.getElementById('ip-label-input').focus(), 50);
+}
+
 async function saveIP() {
-  const raw = document.getElementById('ip-input').value.trim();
+  const raw   = document.getElementById('ip-input').value.trim();
+  const label = document.getElementById('ip-label-input').value.trim();
   if (!raw) { toast('Enter an IP address', 'err'); return; }
   const ipv4 = /^(\d{1,3}\.){3}\d{1,3}$/.test(raw);
   const ipv6 = raw.includes(':');
   if (!ipv4 && !ipv6) { toast('Enter a valid IP address', 'err'); return; }
   D.settings = D.settings || {};
-  D.settings.allowedIPs = D.settings.allowedIPs || [];
-  if (D.settings.allowedIPs.includes(raw)) { toast('IP already in list', 'err'); return; }
-  D.settings.allowedIPs.push(raw);
+  D.settings.allowedIPs = (D.settings.allowedIPs || []).map(_ipEntry);
+  if (_editingIPIdx !== null) {
+    D.settings.allowedIPs[_editingIPIdx] = { ip: raw, label };
+  } else {
+    if (D.settings.allowedIPs.some(e => e.ip === raw)) { toast('IP already in list', 'err'); return; }
+    D.settings.allowedIPs.push({ ip: raw, label });
+  }
   await pushData();
   closeModal('ip-modal');
   renderIPList();
-  toast(`${raw} added to allowlist`);
+  toast(`${raw} ${_editingIPIdx !== null ? 'updated' : 'added to allowlist'}`);
 }
 
 async function deleteIP(idx) {
-  const ip = (D.settings?.allowedIPs || [])[idx];
-  if (!ip) return;
-  if (!confirm(`Remove ${ip} from the allowlist?`)) return;
+  const entry = _ipEntry((D.settings?.allowedIPs || [])[idx]);
+  if (!entry.ip) return;
+  const desc = entry.label ? `${entry.label} (${entry.ip})` : entry.ip;
+  if (!confirm(`Remove ${desc} from the allowlist?`)) return;
   D.settings.allowedIPs.splice(idx, 1);
   await pushData();
   renderIPList();
-  toast(`${ip} removed`);
+  toast(`${entry.ip} removed`);
 }
 
 // ═══════════════════════════════════════════════════════════

@@ -316,7 +316,8 @@ const server = http.createServer(async (req, res) => {
       const raw = req.socket.remoteAddress || '';
       const clientIP = raw.startsWith('::ffff:') ? raw.slice(7) : raw;
       const isLocal  = clientIP === '127.0.0.1' || clientIP === '::1' || clientIP === 'localhost';
-      if (!isLocal && !allowedIPs.includes(clientIP)) {
+      const allowedIPStrings = allowedIPs.map(e => (typeof e === 'string' ? e : e.ip));
+      if (!isLocal && !allowedIPStrings.includes(clientIP)) {
         console.warn(`  ✗ IP blocked: ${clientIP} — not in allowlist`);
         const isPage = !pathname.startsWith('/api/');
         if (isPage) {

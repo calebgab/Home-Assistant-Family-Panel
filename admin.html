@@ -1049,10 +1049,6 @@ select option { background: var(--surface); }
           </button>
         </div>
         <div id="ip-list" style="padding:0 20px;min-height:40px;"></div>
-        <div style="padding:10px 20px 16px;border-top:1px solid var(--border);margin-top:4px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-          <button class="btn btn-secondary btn-sm" onclick="addMyIP()">+ Add my current IP</button>
-          <span style="font-size:11px;color:var(--muted)">Your IP: <code id="my-ip-display" style="background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:11px;">detecting…</code></span>
-        </div>
       </div>
     </div>
 
@@ -2511,7 +2507,6 @@ function renderSettings() {
   document.getElementById('cfg-show-moon').checked          = showMoon;
   document.getElementById('cfg-show-moon-label').textContent = showMoon ? 'Enabled' : 'Disabled';
   renderIPList();
-  detectMyIP();
 }
 
 // SHA-256 via Web Crypto (no server round-trip needed)
@@ -3019,19 +3014,6 @@ async function saveSlot() {
 // ═══════════════════════════════════════════════════════════
 //  IP ALLOWLIST
 // ═══════════════════════════════════════════════════════════
-let _detectedIP = null;
-
-async function detectMyIP() {
-  try {
-    const r = await fetch('/api/myip');
-    const d = await r.json();
-    _detectedIP = d.ip;
-    document.getElementById('my-ip-display').textContent = d.ip || '—';
-  } catch {
-    document.getElementById('my-ip-display').textContent = 'unavailable';
-  }
-}
-
 function renderIPList() {
   const list = document.getElementById('ip-list');
   const ips  = D.settings?.allowedIPs || [];
@@ -3046,7 +3028,6 @@ function renderIPList() {
     row.innerHTML = `
       <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:var(--green);fill:none;stroke-width:2;flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
       <span style="font-family:monospace;font-size:13px;flex:1;">${ip}</span>
-      ${ip === _detectedIP ? '<span style="font-size:10px;background:var(--gold-bg);color:var(--gold);padding:1px 7px;border-radius:10px;font-weight:600;">this device</span>' : ''}
       <button class="btn btn-danger btn-xs" onclick="deleteIP(${idx})">✕</button>`;
     list.appendChild(row);
   });
@@ -3060,7 +3041,6 @@ function openAddIPModal() {
 
 async function saveIP() {
   const raw = document.getElementById('ip-input').value.trim();
-  // Basic IP validation (v4 or v6)
   if (!raw) { toast('Enter an IP address', 'err'); return; }
   const ipv4 = /^(\d{1,3}\.){3}\d{1,3}$/.test(raw);
   const ipv6 = raw.includes(':');
@@ -3075,28 +3055,10 @@ async function saveIP() {
   toast(`${raw} added to allowlist`);
 }
 
-async function addMyIP() {
-  if (!_detectedIP) { toast('Could not detect IP', 'err'); return; }
-  D.settings = D.settings || {};
-  D.settings.allowedIPs = D.settings.allowedIPs || [];
-  if (D.settings.allowedIPs.includes(_detectedIP)) {
-    toast('Your IP is already in the list');
-    return;
-  }
-  D.settings.allowedIPs.push(_detectedIP);
-  await pushData();
-  renderIPList();
-  toast(`${_detectedIP} added — this device is now on the allowlist`);
-}
-
 async function deleteIP(idx) {
   const ip = (D.settings?.allowedIPs || [])[idx];
   if (!ip) return;
-  if (ip === _detectedIP) {
-    if (!confirm(`Remove ${ip}? This is your current device — you may lose access to admin from this IP.`)) return;
-  } else {
-    if (!confirm(`Remove ${ip} from the allowlist?`)) return;
-  }
+  if (!confirm(`Remove ${ip} from the allowlist?`)) return;
   D.settings.allowedIPs.splice(idx, 1);
   await pushData();
   renderIPList();

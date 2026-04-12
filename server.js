@@ -54,6 +54,24 @@ const HA_TOKEN =  process.env.FP_HA_TOKEN || cfg.ha_token || 'PASTE_YOUR_LONG_LI
 const CALENDARS_STATIC      = cfg.calendars      || [];
 const STATE_ENTITIES_STATIC = cfg.state_entities || [];
 
+// Resolve the real client IP, honouring X-Real-IP / X-Forwarded-For ONLY when
+// the TCP connection arrives from a trusted proxy IP configured in Admin →
+// Settings → Trusted Proxies. Loopback (127.0.0.1 / ::1) is always trusted.
+// Headers are never trusted from unknown sources — external clients cannot spoof.
+function getClientIP(req) {
+  const raw = req.socket.remoteAddress || '';
+  const socketIP = raw.startsWith('::ffff:') ? raw.slice(7) : raw;
+  const isLoopback = socketIP === '127.0.0.1' || socketIP === '::1' || socketIP === 'localhost';
+  const configured = getLiveData()?.settings?.trustedProxies || [];
+  if (isLoopback || configured.includes(socketIP)) {
+    const realIP = req.headers['x-real-ip'];
+    if (realIP) return realIP.trim();
+    const forwarded = req.headers['x-forwarded-for'];
+    if (forwarded) return forwarded.split(',')[0].trim();
+  }
+  return socketIP;
+}
+
 // Read live config from data.json (so admin changes take effect without restart)
 function getLiveData() {
   try { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); }
@@ -334,8 +352,7 @@ const server = http.createServer(async (req, res) => {
     try { allowedIPs = getLiveData()?.settings?.allowedIPs || []; } catch {}
     if (Array.isArray(allowedIPs) && allowedIPs.length > 0) {
       // Normalise IPv6-mapped IPv4 (::ffff:192.168.1.5 → 192.168.1.5)
-      const raw = req.socket.remoteAddress || '';
-      const clientIP = raw.startsWith('::ffff:') ? raw.slice(7) : raw;
+      const clientIP = getClientIP(req);
       const isLocal  = clientIP === '127.0.0.1' || clientIP === '::1' || clientIP === 'localhost';
       const allowedIPStrings = allowedIPs.map(e => (typeof e === 'string' ? e : e.ip));
       if (!isLocal && !allowedIPStrings.includes(clientIP)) {
@@ -400,8 +417,7 @@ Add it in <strong>Admin → Settings → IP Allowlist</strong> from an authorise
   // Returns the caller's IP as seen by the server — used by admin to detect
   // the current device's IP for easy allowlist entry
   if (pathname === '/api/myip' && method === 'GET') {
-    const raw = req.socket.remoteAddress || '';
-    const ip  = raw.startsWith('::ffff:') ? raw.slice(7) : raw;
+    const ip = getClientIP(req);
     sendJSON(res, 200, { ip });
     return;
   }

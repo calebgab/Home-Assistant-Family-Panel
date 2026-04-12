@@ -1036,6 +1036,31 @@ select option { background: var(--surface); }
         </div>
       </div>
 
+      <!-- Trusted Proxies -->
+      <div class="panel" style="margin-top:16px;">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title" style="display:flex;align-items:center;gap:8px;">
+              Trusted Proxies
+              <button onclick="toggleProxySnippet()" style="background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:18px;height:18px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0;" title="Show nginx config">?</button>
+            </div>
+            <div class="panel-sub">IP addresses of reverse proxy servers (e.g. Nginx Proxy Manager) that sit in front of Family Panel. When set, the real client IP is read from the <code style="font-size:10px;background:var(--surface2);padding:1px 4px;border-radius:3px;">X-Real-IP</code> header forwarded by the proxy. Loopback (127.0.0.1) is always trusted.</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openAddProxyModal()">
+            <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+            Add Proxy
+          </button>
+        </div>
+        <div id="proxy-snippet" style="display:none;margin:0 20px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+          <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;">Add the following to your proxy host's <strong>Advanced</strong> config in Nginx Proxy Manager:</div>
+          <pre id="proxy-snippet-code" style="font-size:12px;color:var(--text);margin:0;white-space:pre;font-family:monospace;line-height:1.6;">proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $scheme;</pre>
+          <button class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="copyProxySnippet()">Copy</button>
+        </div>
+        <div id="proxy-list" style="padding:0 20px;min-height:40px;"></div>
+      </div>
+
       <!-- IP Allowlist -->
       <div class="panel" style="margin-top:16px;">
         <div class="panel-header">
@@ -1554,6 +1579,22 @@ select option { background: var(--surface); }
         <button class="btn btn-secondary" id="cm-clone-btn" onclick="cloneChore()" style="display:none;flex:1;">Clone</button>
         <button class="btn btn-primary" style="flex:1;" onclick="saveChoreModal()">Save</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PROXY MODAL -->
+<div class="modal-overlay" id="proxy-modal">
+  <div class="modal">
+    <h3>Add Trusted Proxy</h3>
+    <div class="form-group" style="margin-bottom:4px;">
+      <label class="form-label">Proxy IP Address</label>
+      <input type="text" id="proxy-input" placeholder="e.g. 192.168.1.5" onkeydown="if(event.key==='Enter')saveTrustedProxy()">
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;">Enter the IP address of your reverse proxy server (e.g. the host running Nginx Proxy Manager).</div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('proxy-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTrustedProxy()">Add</button>
     </div>
   </div>
 </div>
@@ -2522,6 +2563,7 @@ function renderSettings() {
   const showMoon = !!s.showMoon;
   document.getElementById('cfg-show-moon').checked          = showMoon;
   document.getElementById('cfg-show-moon-label').textContent = showMoon ? 'Enabled' : 'Disabled';
+  renderTrustedProxyList();
   renderIPList();
   renderBlockedIPList();
 }
@@ -3027,6 +3069,71 @@ async function saveSlot() {
 }
 
 
+
+// ═══════════════════════════════════════════════════════════
+//  TRUSTED PROXIES
+// ═══════════════════════════════════════════════════════════
+function toggleProxySnippet() {
+  const el = document.getElementById('proxy-snippet');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function copyProxySnippet() {
+  const text = document.getElementById('proxy-snippet-code').textContent;
+  navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard')).catch(() => toast('Copy failed', 'err'));
+}
+
+function renderTrustedProxyList() {
+  const list = document.getElementById('proxy-list');
+  if (!list) return;
+  const proxies = D.settings?.trustedProxies || [];
+  if (!proxies.length) {
+    list.innerHTML = '<div style="padding:14px 0;font-size:12px;color:var(--muted);">No trusted proxies configured — forwarded headers will not be used.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  proxies.forEach((ip, idx) => {
+    const row = document.createElement('div');
+    row.className = 'chore-list-row';
+    row.innerHTML = `
+      <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:var(--gold);fill:none;stroke-width:2;flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5c0 .621.592 1.343 1.5 1.343s1.5-.722 1.5-1.343m6 0c0 .621.592 1.343 1.5 1.343s1.5-.722 1.5-1.343M5 12.5V6.75A2.25 2.25 0 017.25 4.5h9.5A2.25 2.25 0 0119 6.75v5.75m-14 0v3.25a2.25 2.25 0 002.25 2.25h9.5A2.25 2.25 0 0019 15.75V12.5"/></svg>
+      <span style="font-family:monospace;font-size:13px;flex:1;">${ip}</span>
+      <button class="btn btn-danger btn-xs" onclick="deleteTrustedProxy(${idx})">✕</button>`;
+    list.appendChild(row);
+  });
+}
+
+function openAddProxyModal() {
+  document.getElementById('proxy-input').value = '';
+  openModal('proxy-modal');
+  setTimeout(() => document.getElementById('proxy-input').focus(), 50);
+}
+
+async function saveTrustedProxy() {
+  const raw = document.getElementById('proxy-input').value.trim();
+  if (!raw) { toast('Enter an IP address', 'err'); return; }
+  const ipv4 = /^(\d{1,3}\.){3}\d{1,3}$/.test(raw);
+  const ipv6 = raw.includes(':');
+  if (!ipv4 && !ipv6) { toast('Enter a valid IP address', 'err'); return; }
+  D.settings = D.settings || {};
+  D.settings.trustedProxies = D.settings.trustedProxies || [];
+  if (D.settings.trustedProxies.includes(raw)) { toast('Already in list', 'err'); return; }
+  D.settings.trustedProxies.push(raw);
+  await pushData();
+  closeModal('proxy-modal');
+  renderTrustedProxyList();
+  toast(`${raw} added as trusted proxy`);
+}
+
+async function deleteTrustedProxy(idx) {
+  const ip = (D.settings?.trustedProxies || [])[idx];
+  if (!ip) return;
+  if (!confirm(`Remove ${ip} from trusted proxies?`)) return;
+  D.settings.trustedProxies.splice(idx, 1);
+  await pushData();
+  renderTrustedProxyList();
+  toast(`${ip} removed`);
+}
 
 // ═══════════════════════════════════════════════════════════
 //  IP ALLOWLIST

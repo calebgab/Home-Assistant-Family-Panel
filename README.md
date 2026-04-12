@@ -281,6 +281,32 @@ Visit **http://your-server:8080/admin** to configure everything.
 
 ---
 
+## Reverse Proxy Setup
+
+If you expose Family Panel through a reverse proxy such as **Nginx Proxy Manager** or **Traefik**, two things are needed so that real client IPs are passed through correctly (required for IP Allowlisting and Blocked IP tracking to work).
+
+### 1. Configure the proxy to forward the client IP
+
+In your Reverse Proxy, edit your proxy host → **Advanced** tab, and add:
+
+```nginx
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $scheme;
+```
+
+> This snippet is also available in **Admin → Settings → Trusted Proxies** via the **?** button.
+
+### 2. Add your proxy server as a Trusted Proxy in Admin
+
+Go to **Admin → Settings → Trusted Proxies** and add the IP address of the host running Nginx Proxy Manager (e.g. `192.168.1.5`).
+
+Family Panel will then read the real client IP from the `X-Real-IP` header forwarded by the reverse proxy. Headers are **only** trusted when the TCP connection comes from a configured trusted proxy — external clients cannot spoof their IP by injecting these headers directly.
+
+> Loopback (`127.0.0.1`) is always trusted, so if your reverse proxy runs on the same host as Family Panel no extra configuration is needed.
+
+---
+
 ## Alarm Panel Setup
 
 1. In **Admin → HA Entities → Sensors**, add a sensor with type **Alarm panel**.

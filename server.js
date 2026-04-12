@@ -368,8 +368,7 @@ h1{font-size:20px;font-weight:600;margin-bottom:8px;color:#1a1815}p{font-size:13
 code{background:#f4f1eb;padding:2px 7px;border-radius:4px;font-size:12px;}</style></head>
 <body><div class="card"><div style="font-size:40px;margin-bottom:16px">🔒</div>
 <h1>Access Restricted</h1>
-<p>This device (<code>${clientIP}</code>) is not on the allowed IP list.<br><br>
-Add it in <strong>Admin → Settings → IP Allowlist</strong> from an authorised device.</p></div></body></html>`);
+<p>You do not have permission to access this page.<br><br>Please check with your Administrator.</p></div></body></html>`);
         } else {
           sendJSON(res, 403, { error: 'IP not in allowlist', ip: clientIP });
         }

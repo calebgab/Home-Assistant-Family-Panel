@@ -805,7 +805,7 @@ select option { background: var(--surface); }
             <div class="setting-desc">Long-lived access token from HA → Profile → Security</div>
           </div>
           <div class="setting-control" style="min-width:260px;">
-            <input type="password" id="cfg-ha-token" placeholder="Leave blank to keep current token" style="width:100%;">
+            <input type="password" id="cfg-ha-token" placeholder="Leave blank to keep current token" style="width:100%;" autocomplete="off">
           </div>
         </div>
         <div class="setting-row" style="border:none;padding-bottom:20px;gap:12px;flex-wrap:wrap;">
@@ -896,7 +896,7 @@ select option { background: var(--surface); }
             <div class="setting-desc">Set a password to protect this admin portal. Stored as a SHA-256 hash. Leave blank to keep current password.</div>
           </div>
           <div class="setting-control">
-            <input type="password" id="cfg-password" placeholder="Enter new password">
+            <input type="password" id="cfg-password" placeholder="Enter new password" autocomplete="new-password">
           </div>
         </div>
         <div class="setting-row">

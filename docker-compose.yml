@@ -6,9 +6,11 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      # Persist config and data outside the container so they survive updates
-      - ./config.json:/app/config.json
-      - ./data.json:/app/data.json
+      # DATA_DIR should point to a folder on the host containing config.json and data.json.
+      # Default is the current directory (works for local docker compose up).
+      # In Portainer, set DATA_DIR=/opt/family-panel (or wherever your files live).
+      - ${DATA_DIR:-.}/config.json:/app/config.json
+      - ${DATA_DIR:-.}/data.json:/app/data.json
     environment:
       # Environment variables override config.json values.
       # Recommended for secrets — avoids storing tokens in config.json.

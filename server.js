@@ -30,14 +30,22 @@ function sha256(str) { return crypto.createHash('sha256').update(str).digest('he
 // In-memory admin session tokens (cleared on server restart)
 const ADMIN_SESSIONS = new Set();
 // ─────────────────────────────────────────────────────────
-const CONFIG_FILE = path.join(__dirname, 'config.json');
+// FP_DATA_DIR lets the data directory be moved (e.g. to a Docker named volume).
+// Falls back to the app directory so existing non-Docker installs are unaffected.
+const DATA_DIR   = process.env.FP_DATA_DIR ? path.resolve(process.env.FP_DATA_DIR) : __dirname;
+const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
 let cfg = {};
 try {
   cfg = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
 } catch (e) {
-  console.error(`  ✗ Could not read config.json: ${e.message}`);
-  console.error('    Make sure config.json exists alongside server.js.');
-  process.exit(1);
+  // If no config.json exists but env vars supply the essentials, continue with defaults
+  if (process.env.FP_HA_URL && process.env.FP_HA_TOKEN) {
+    console.warn('  ⚠ No config.json found — using FP_HA_URL / FP_HA_TOKEN env vars');
+  } else {
+    console.error(`  ✗ Could not read config.json: ${e.message}`);
+    console.error('    Either create config.json or set FP_HA_URL and FP_HA_TOKEN env vars.');
+    process.exit(1);
+  }
 }
 
 // CLI --port flag overrides everything
@@ -115,7 +123,7 @@ function getStateEntities() {
 //  PATHS & MIME
 // ─────────────────────────────────────────────────────────
 const ROOT      = __dirname;
-const DATA_FILE = path.join(ROOT, 'data.json');
+const DATA_FILE = path.join(DATA_DIR, 'data.json');
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',

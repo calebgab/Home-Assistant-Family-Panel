@@ -9,9 +9,10 @@ services:
       - family-panel-data:/data
     environment:
       - FP_DATA_DIR=/data
-      # Set your Home Assistant credentials here — no config.json needed
-      # - FP_HA_URL=http://homeassistant.local:8123
-      # - FP_HA_TOKEN=your_long_lived_token_here
+      # Set FP_HA_URL and FP_HA_TOKEN in Portainer's "Environment variables" section
+      # or in a .env file alongside this compose file. They are substituted below:
+      - FP_HA_URL=${FP_HA_URL}
+      - FP_HA_TOKEN=${FP_HA_TOKEN}
 
 volumes:
   family-panel-data:

@@ -1208,10 +1208,12 @@ button:hover{opacity:.88;}
   <div class="logo"><img src="/favicon-32x32.png" alt="Family Panel icon"> Family<span>Panel</span></div>
   <div class="sub">Admin access is password protected.</div>
   ${lVersion ? `<div class="ver">v${lVersion}</div>` : ''}
-  <label>Password</label>
-  <input type="password" id="pw" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')login()" autofocus>
-  <button onclick="login()">Sign in</button>
-  <div id="err"></div>
+  <form onsubmit="login();return false;">
+    <label>Password</label>
+    <input type="password" id="pw" placeholder="Enter admin password" autofocus autocomplete="current-password">
+    <button type="submit">Sign in</button>
+    <div id="err"></div>
+  </form>
 </div>
 <script>
 async function login() {

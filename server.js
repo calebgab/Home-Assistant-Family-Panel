@@ -56,8 +56,10 @@ const PORT = (() => {
 })();
 
 // Environment variables override config.json (useful for secrets in production)
-const HA_URL   = (process.env.FP_HA_URL   || cfg.ha_url   || 'http://10.2.0.20:8123').replace(/\/$/, '');
-const HA_TOKEN =  process.env.FP_HA_TOKEN || cfg.ha_token || 'PASTE_YOUR_LONG_LIVED_TOKEN_HERE';
+const HA_URL   = (process.env.FP_HA_URL   || cfg.ha_url   || '').replace(/\/$/, '');
+const HA_TOKEN =  process.env.FP_HA_TOKEN || cfg.ha_token || '';
+// True only when a real token is set (not the example placeholder, not empty)
+const HA_TOKEN_SET = HA_TOKEN.length > 20 && HA_TOKEN !== 'PASTE_YOUR_LONG_LIVED_TOKEN_HERE';
 
 const CALENDARS_STATIC      = cfg.calendars      || [];
 const STATE_ENTITIES_STATIC = cfg.state_entities || [];
@@ -432,9 +434,11 @@ code{background:#f4f1eb;padding:2px 7px;border-radius:4px;font-size:12px;}</styl
   // (never exposes ha_token)
   if (pathname === '/api/config' && method === 'GET') {
     sendJSON(res, 200, {
-      ha_url:  HA_URL,
-      port:    PORT,
-      token_set: HA_TOKEN !== 'PASTE_YOUR_LONG_LIVED_TOKEN_HERE' && HA_TOKEN.length > 20,
+      ha_url:       HA_URL,
+      port:         PORT,
+      token_set:    HA_TOKEN_SET,
+      url_from_env: !!process.env.FP_HA_URL,
+      token_from_env: !!process.env.FP_HA_TOKEN,
     });
     return;
   }
@@ -469,7 +473,7 @@ code{background:#f4f1eb;padding:2px 7px;border-radius:4px;font-size:12px;}</styl
         status:  r.status,
         message: r.body?.message ?? String(r.body).slice(0, 80),
         ha_url:  HA_URL,
-        token_set: HA_TOKEN !== 'PASTE_YOUR_LONG_LIVED_TOKEN_HERE' && HA_TOKEN.length > 20,
+        token_set: HA_TOKEN_SET,
       });
     } catch (e) {
       sendJSON(res, 200, { ok: false, error: e.message, ha_url: HA_URL });
@@ -478,7 +482,7 @@ code{background:#f4f1eb;padding:2px 7px;border-radius:4px;font-size:12px;}</styl
   }
   if (pathname === '/api/ha/test' && method === 'GET') {
     const result = {
-      config: { ha_url: HA_URL, token_set: HA_TOKEN !== 'PASTE_YOUR_LONG_LIVED_TOKEN_HERE' && HA_TOKEN.length > 10, token_length: HA_TOKEN.length },
+      config: { ha_url: HA_URL, token_set: HA_TOKEN_SET, token_length: HA_TOKEN.length },
       api_ping: null,
       sample_entity: null,
       errors: [],
@@ -1247,18 +1251,20 @@ async function login() {
 //  START
 // ─────────────────────────────────────────────────────────
 server.listen(PORT, '0.0.0.0', () => {
-  const tokenSet = HA_TOKEN !== 'PASTE_YOUR_LONG_LIVED_TOKEN_HERE' && HA_TOKEN.length > 20;
+  const tokenSet = HA_TOKEN_SET;
+  const urlSet   = HA_URL.length > 0;
   console.log('');
   console.log('  🏠 Family Panel — HA Edition');
   console.log(`     Dashboard  : http://localhost:${PORT}/`);
   console.log(`     Admin      : http://localhost:${PORT}/admin`);
-  console.log(`     HA URL     : ${HA_URL}`);
-  console.log(`     HA token   : ${tokenSet ? `✓ set (${HA_TOKEN.length} chars)` : '✗ NOT SET — edit config.json'}`);
+  console.log(`     HA URL     : ${urlSet ? HA_URL : '✗ NOT SET'}`);
+  console.log(`     HA token   : ${tokenSet ? `✓ set (${HA_TOKEN.length} chars)` : '✗ NOT SET'}`);
   console.log(`     Config     : ${CONFIG_FILE}`);
   console.log(`     Diagnostic : http://localhost:${PORT}/api/ha/test`);
   console.log('');
-  if (!tokenSet) {
-    console.log('  ★ Token not configured — open config.json and set "ha_token".');
+  if (!urlSet || !tokenSet) {
+    console.log('  ★ HA not configured. Set FP_HA_URL and FP_HA_TOKEN env vars,');
+    console.log('    or edit config.json and set "ha_url" and "ha_token".');
     console.log('');
   }
 });

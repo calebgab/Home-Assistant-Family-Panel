@@ -2645,13 +2645,37 @@ async function renderConnection() {
   try {
     const r = await fetch('/api/config');
     const c = await r.json();
-    document.getElementById('cfg-ha-url').value    = c.ha_url || '';
-    document.getElementById('cfg-ha-token').value  = '';
+    const urlEl   = document.getElementById('cfg-ha-url');
+    const tokenEl = document.getElementById('cfg-ha-token');
+    const saveBtn = document.querySelector('button[onclick="saveConnection()"]');
+    const subEl   = document.querySelector('#section-connection .page-sub');
+    if (c.url_from_env || c.token_from_env) {
+      // Env var mode — fields are read-only, saving config.json has no effect
+      urlEl.value      = c.ha_url || '';
+      urlEl.readOnly   = true;
+      urlEl.style.opacity = '0.6';
+      tokenEl.value    = c.token_from_env ? '(set via FP_HA_TOKEN env var)' : '';
+      tokenEl.readOnly = true;
+      tokenEl.style.opacity = '0.6';
+      if (saveBtn) saveBtn.style.display = 'none';
+      if (subEl) subEl.innerHTML = `HA URL and token are configured via <strong>environment variables</strong> (FP_HA_URL / FP_HA_TOKEN). To change them, update the env vars in your Docker / Portainer config and restart the container.`;
+    } else {
+      urlEl.value      = c.ha_url || '';
+      urlEl.readOnly   = false;
+      urlEl.style.opacity = '';
+      tokenEl.value    = '';
+      tokenEl.readOnly = false;
+      tokenEl.style.opacity = '';
+      if (saveBtn) saveBtn.style.display = '';
+      if (subEl) subEl.innerHTML = `Configure your Home Assistant URL and long-lived access token. Changes are saved to <code style="font-size:11px;background:var(--surface2);padding:1px 5px;border-radius:4px;">config.json</code> and take effect after a server restart. Alternatively, set <code style="font-size:11px;background:var(--surface2);padding:1px 5px;border-radius:4px;">FP_HA_URL</code> and <code style="font-size:11px;background:var(--surface2);padding:1px 5px;border-radius:4px;">FP_HA_TOKEN</code> as environment variables.`;
+    }
     const detail = document.getElementById('conn-status-detail');
     detail.innerHTML = `
       <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:12px;">
-        <span style="color:var(--muted)">HA URL</span><span>${c.ha_url || '—'}</span>
-        <span style="color:var(--muted)">Token</span><span>${c.token_set ? '✓ Configured' : '✗ Not set'}</span>
+        <span style="color:var(--muted)">HA URL</span><span>${c.ha_url || '<span style="color:var(--red)">Not set</span>'}</span>
+        <span style="color:var(--muted)">URL source</span><span>${c.url_from_env ? 'FP_HA_URL env var' : 'config.json'}</span>
+        <span style="color:var(--muted)">Token</span><span style="color:${c.token_set ? 'var(--green)' : 'var(--red)'}">${c.token_set ? '✓ Configured' : '✗ Not set'}</span>
+        <span style="color:var(--muted)">Token source</span><span>${c.token_from_env ? 'FP_HA_TOKEN env var' : 'config.json'}</span>
         <span style="color:var(--muted)">Port</span><span>${c.port || '8080'}</span>
       </div>`;
   } catch (e) {
@@ -2660,7 +2684,9 @@ async function renderConnection() {
 }
 
 async function saveConnection() {
-  const url   = document.getElementById('cfg-ha-url').value.trim();
+  const urlEl = document.getElementById('cfg-ha-url');
+  if (urlEl.readOnly) { toast('Connection is configured via env vars — update FP_HA_URL / FP_HA_TOKEN instead', 'err'); return; }
+  const url   = urlEl.value.trim();
   const token = document.getElementById('cfg-ha-token').value.trim();
   if (!url) { toast('HA URL is required', 'err'); return; }
   const body = { ha_url: url };

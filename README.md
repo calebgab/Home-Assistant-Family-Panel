@@ -178,7 +178,79 @@ Everything is configured from the admin portal - no need to edit `data.json` by 
 
 ## Running permanently
 
-### PM2 (recommended for Raspberry Pi / Linux)
+### Docker Compose (recommended)
+
+The repo includes a `Dockerfile` and `docker-compose.yml`. All data is stored in a named Docker volume — no bind mounts or manual file setup required.
+
+#### Environment variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `FP_HA_URL` | Yes | Your Home Assistant URL — must be an IP address, not a `.local` hostname (e.g. `http://192.168.1.10:8123`) |
+| `FP_HA_TOKEN` | Yes | Long-lived access token from HA → Profile → Security |
+| `FP_PORT` | No | Host port to expose (default `8080`) |
+| `FP_DATA_DIR` | No | Path inside the container to store data (default `/data`) |
+
+> **Note:** `.local` / mDNS hostnames (e.g. `homeassistant.local`) do not resolve inside Docker containers. Use the IP address of your Home Assistant host.
+
+#### Docker CLI
+
+```bash
+docker run -d \
+  --name family-panel \
+  --restart unless-stopped \
+  -p 8080:8080 \
+  -v family-panel-data:/data \
+  -e FP_DATA_DIR=/data \
+  -e FP_HA_URL=http://192.168.1.10:8123 \
+  -e FP_HA_TOKEN=your_token_here \
+  family-panel
+```
+
+#### Docker Compose
+
+**1. Build and start:**
+
+```bash
+docker compose up -d --build
+```
+
+**2. Set your environment variables** in a `.env` file alongside `docker-compose.yml`:
+
+```env
+FP_HA_URL=http://192.168.1.10:8123
+FP_HA_TOKEN=your_token_here
+FP_PORT=8080
+```
+
+Family Panel will be available at `http://your-server:8080`.
+
+**Updating:**
+
+```bash
+docker compose up -d --build
+```
+
+#### Portainer
+
+1. Go to **Stacks → Add stack** and paste in the contents of `docker-compose.yml`.
+2. Scroll to **Environment variables** and add:
+
+| Name | Value |
+|---|---|
+| `FP_HA_URL` | `http://192.168.1.10:8123` |
+| `FP_HA_TOKEN` | your token |
+| `FP_PORT` | `8080` (optional) |
+
+3. Click **Deploy the stack**.
+
+> The Portainer "Environment variables" section uses substitution — the values you enter there are injected into the `${FP_HA_URL}` / `${FP_HA_TOKEN}` placeholders in the compose YAML. Do **not** hardcode your token directly in the YAML.
+
+> **Tip:** If you use Nginx Proxy Manager in front of Family Panel, see the [Reverse Proxy Setup](#reverse-proxy-setup) section.
+
+---
+
+### PM2 (Raspberry Pi / Linux, no Docker)
 
 ```bash
 npm install -g pm2
@@ -187,46 +259,13 @@ pm2 save
 pm2 startup
 ```
 
-### Docker (environment variables)
+Set `ha_url` and `ha_token` in `config.json`, or export the environment variables before starting:
 
 ```bash
-FP_HA_URL=http://homeassistant.local:8123 \
-FP_HA_TOKEN=your_token_here \
-FP_PORT=8080 \
-node server.js
+export FP_HA_URL=http://192.168.1.10:8123
+export FP_HA_TOKEN=your_token_here
+pm2 start server.js --name family-panel
 ```
-
-### Docker Compose (recommended for self-hosting)
-
-The repo includes a `Dockerfile` and `docker-compose.yml` for running Family Panel as a container.
-
-**1. Create your config and data files on the host** (only needed once):
-
-```bash
-cp config.example.json config.json
-cp data.example.json data.json
-```
-
-Edit `config.json` with your HA URL and token, or use environment variables instead (see `docker-compose.yml`).
-
-**2. Build and start:**
-
-```bash
-docker compose up -d
-```
-
-Family Panel will be available at `http://your-server:8080`.
-
-**Persistence:** `config.json` and `data.json` are volume-mounted from the host directory, so all admin settings and chore data survive container restarts and image rebuilds.
-
-**Updating:**
-
-```bash
-docker compose pull   # if using a registry image
-docker compose up -d --build
-```
-
-> **Tip:** If you use Nginx Proxy Manager in front of Family Panel, see the [Reverse Proxy Setup](#reverse-proxy-setup-nginx-proxy-manager) section.
 
 ---
 

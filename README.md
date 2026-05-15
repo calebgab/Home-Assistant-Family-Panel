@@ -196,6 +196,38 @@ FP_PORT=8080 \
 node server.js
 ```
 
+### Docker Compose (recommended for self-hosting)
+
+The repo includes a `Dockerfile` and `docker-compose.yml` for running Family Panel as a container.
+
+**1. Create your config and data files on the host** (only needed once):
+
+```bash
+cp config.example.json config.json
+cp data.example.json data.json
+```
+
+Edit `config.json` with your HA URL and token, or use environment variables instead (see `docker-compose.yml`).
+
+**2. Build and start:**
+
+```bash
+docker compose up -d
+```
+
+Family Panel will be available at `http://your-server:8080`.
+
+**Persistence:** `config.json` and `data.json` are volume-mounted from the host directory, so all admin settings and chore data survive container restarts and image rebuilds.
+
+**Updating:**
+
+```bash
+docker compose pull   # if using a registry image
+docker compose up -d --build
+```
+
+> **Tip:** If you use Nginx Proxy Manager in front of Family Panel, see the [Reverse Proxy Setup](#reverse-proxy-setup-nginx-proxy-manager) section.
+
 ---
 
 ## Admin Portal Reference

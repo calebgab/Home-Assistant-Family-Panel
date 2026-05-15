@@ -180,13 +180,13 @@ Everything is configured from the admin portal - no need to edit `data.json` by 
 
 ### Docker Compose (recommended)
 
-The repo includes a `Dockerfile` and `docker-compose.yml`. All data is stored in a named Docker volume — no bind mounts or manual file setup required.
+The repo includes a `Dockerfile` and `docker-compose.yml`. All data is stored in a named Docker volume (no bind mounts or manual file setup required).
 
 #### Environment variables
 
 | Variable | Required | Description |
 |---|---|---|
-| `FP_HA_URL` | Yes | Your Home Assistant URL — must be an IP address, not a `.local` hostname (e.g. `http://192.168.1.10:8123`) |
+| `FP_HA_URL` | Yes | Your Home Assistant URL. Must be an IP address, not a `.local` hostname (e.g. `http://192.168.1.10:8123`) |
 | `FP_HA_TOKEN` | Yes | Long-lived access token from HA → Profile → Security |
 | `FP_PORT` | No | Host port to expose (default `8080`) |
 | `FP_DATA_DIR` | No | Path inside the container to store data (default `/data`) |
@@ -244,7 +244,7 @@ docker compose up -d --build
 
 3. Click **Deploy the stack**.
 
-> The Portainer "Environment variables" section uses substitution — the values you enter there are injected into the `${FP_HA_URL}` / `${FP_HA_TOKEN}` placeholders in the compose YAML. Do **not** hardcode your token directly in the YAML.
+> The Portainer "Environment variables" section uses substitution. The values you enter there are injected into the `${FP_HA_URL}` / `${FP_HA_TOKEN}` placeholders in the compose YAML. Do **not** hardcode your token directly in the YAML.
 
 > **Tip:** If you use Nginx Proxy Manager in front of Family Panel, see the [Reverse Proxy Setup](#reverse-proxy-setup) section.
 
@@ -372,7 +372,7 @@ proxy_set_header X-Forwarded-Proto $scheme;
 
 Go to **Admin → Settings → Trusted Proxies** and add the IP address of the host running Nginx Proxy Manager (e.g. `192.168.1.5`).
 
-Family Panel will then read the real client IP from the `X-Real-IP` header forwarded by the reverse proxy. Headers are **only** trusted when the TCP connection comes from a configured trusted proxy — external clients cannot spoof their IP by injecting these headers directly.
+Family Panel will then read the real client IP from the `X-Real-IP` header forwarded by the reverse proxy. Headers are **only** trusted when the TCP connection comes from a configured trusted proxy. External clients cannot spoof their IP by injecting these headers directly.
 
 > Loopback (`127.0.0.1`) is always trusted, so if your reverse proxy runs on the same host as Family Panel no extra configuration is needed.
 

@@ -1209,6 +1209,7 @@ button:hover{opacity:.88;}
   <div class="sub">Admin access is password protected.</div>
   ${lVersion ? `<div class="ver">v${lVersion}</div>` : ''}
   <form onsubmit="login();return false;">
+    <input type="text" name="username" autocomplete="username" style="display:none;" value="admin">
     <label>Password</label>
     <input type="password" id="pw" placeholder="Enter admin password" autofocus autocomplete="current-password">
     <button type="submit">Sign in</button>
@@ -1240,10 +1241,10 @@ async function login() {
     sendFile(res, path.join(ROOT, 'admin.html')); return;
   }
 
-  if (pathname === '/favicon.ico')        { sendFile(res, path.join(ROOT, 'favicon.ico'));        return; }
-  if (pathname === '/favicon-32x32.png')  { sendFile(res, path.join(ROOT, 'docs/favicon-32x32.png'));  return; }
-  if (pathname === '/favicon-16x16.png')  { sendFile(res, path.join(ROOT, 'docs/favicon-16x16.png'));  return; }
-  if (pathname === '/apple-touch-icon.png') { sendFile(res, path.join(ROOT, 'docs/apple-touch-icon.png')); return; }
+  if (pathname === '/favicon.ico')          { sendFile(res, path.join(ROOT, 'favicon.ico'));          return; }
+  if (pathname === '/favicon-32x32.png')    { sendFile(res, path.join(ROOT, 'favicon-32x32.png'));    return; }
+  if (pathname === '/favicon-16x16.png')    { sendFile(res, path.join(ROOT, 'favicon-16x16.png'));    return; }
+  if (pathname === '/apple-touch-icon.png') { sendFile(res, path.join(ROOT, 'apple-touch-icon.png')); return; }
 
   res.writeHead(404, { 'Content-Type': 'text/plain' });
   res.end(`404 Not Found: ${pathname}`);

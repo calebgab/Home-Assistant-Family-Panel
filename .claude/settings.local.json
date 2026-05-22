@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\caleb\\\\OneDrive\\\\Documents\\\\Home Assistant\\\\Home Assistant Family-Panel\" -Recurse -Depth 3)",
+      "Bash(Select-Object FullName)",
+      "WebFetch(domain:cdn.jsdelivr.net)",
+      "Bash(grep -n \"^</script>$\\\\|^</body>\" \"c:\\\\Users\\\\caleb\\\\OneDrive\\\\Documents\\\\Home Assistant\\\\Home Assistant Family-Panel\\\\index.html\")"
+    ]
+  }
+}

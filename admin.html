@@ -599,6 +599,10 @@ select option { background: var(--surface); }
         <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
         Reminders
       </button>
+      <button class="sidebar-btn" onclick="showSection('guests')">
+        <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"/></svg>
+        Guests
+      </button>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">Home Assistant</div>
@@ -1259,6 +1263,107 @@ proxy_set_header X-Forwarded-Proto $scheme;</pre>
       </div>
     </div>
 
+    <!-- ══════════════ GUESTS ══════════════ -->
+    <div id="section-guests" class="section">
+      <div class="page-title">Guest Page</div>
+      <div class="page-sub">Configure the Guests page shown on the family panel dashboard. Guests can scan a QR code to join your WiFi, and see any custom information you want to share.</div>
+
+      <div class="panel">
+        <div class="setting-row" style="border:none;">
+          <div class="setting-info">
+            <div class="setting-name">Enable Guests Page</div>
+            <div class="setting-desc">Show the Guests button in the dashboard top bar</div>
+          </div>
+          <div class="setting-control">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+              <input type="checkbox" id="guests-enabled" onchange="document.getElementById('guests-enabled-lbl').textContent=this.checked?'Enabled':'Disabled'">
+              <span id="guests-enabled-lbl" style="font-size:12px;color:var(--muted);">Disabled</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:16px;">
+        <div class="panel-header">
+          <div class="panel-title">Guest WiFi</div>
+          <div style="font-size:11px;color:var(--muted);">Generates a scannable QR code on the Guests page</div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Show WiFi QR Code</div>
+            <div class="setting-desc">Display a QR code guests can scan on Android or iPhone to auto-join</div>
+          </div>
+          <div class="setting-control">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+              <input type="checkbox" id="guests-wifi-enabled" onchange="document.getElementById('guests-wifi-lbl').textContent=this.checked?'Enabled':'Disabled'">
+              <span id="guests-wifi-lbl" style="font-size:12px;color:var(--muted);">Disabled</span>
+            </label>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Network Name (SSID)</div>
+            <div class="setting-desc">Your guest WiFi network name, exactly as it appears on the router</div>
+          </div>
+          <div class="setting-control" style="min-width:230px;">
+            <input type="text" id="guests-wifi-ssid" placeholder="e.g. Home Guests" style="width:100%;">
+          </div>
+        </div>
+        <div class="setting-row" style="border:none;">
+          <div class="setting-info">
+            <div class="setting-name">Password</div>
+            <div class="setting-desc">Leave blank for an open or hidden network</div>
+          </div>
+          <div class="setting-control" style="min-width:230px;">
+            <input type="text" id="guests-wifi-password" placeholder="WiFi password" autocomplete="off" style="width:100%;">
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:16px;">
+        <div class="panel-header" style="padding-bottom:0;border-bottom:none;">
+          <div class="panel-title">Page Content</div>
+          <div style="font-size:11px;color:var(--muted);">HTML fully supported &mdash; switch to HTML mode for full control</div>
+        </div>
+        <div style="display:flex;border-bottom:1px solid var(--border);padding:8px 20px 0;gap:0;">
+          <button id="guests-tab-visual" onclick="guestsSetTab('visual')"
+            style="background:none;border:none;border-bottom:2px solid var(--gold);color:var(--text);font-size:12px;font-weight:600;padding:6px 14px 8px;cursor:pointer;font-family:inherit;margin-bottom:-1px;transition:color .15s,border-color .15s;">Visual</button>
+          <button id="guests-tab-html" onclick="guestsSetTab('html')"
+            style="background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:12px;font-weight:600;padding:6px 14px 8px;cursor:pointer;font-family:inherit;margin-bottom:-1px;transition:color .15s,border-color .15s;">HTML</button>
+        </div>
+        <div id="guests-visual-pane" style="padding:16px 20px;">
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">
+            <button onclick="document.execCommand('bold')" title="Bold" style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--muted);font-size:12px;font-weight:700;padding:3px 9px;cursor:pointer;font-family:inherit;">B</button>
+            <button onclick="document.execCommand('italic')" title="Italic" style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--muted);font-size:12px;font-style:italic;padding:3px 9px;cursor:pointer;font-family:inherit;">I</button>
+            <button onclick="document.execCommand('underline')" title="Underline" style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--muted);font-size:12px;text-decoration:underline;padding:3px 9px;cursor:pointer;font-family:inherit;">U</button>
+            <button onclick="document.execCommand('insertUnorderedList')" title="Bullet list" style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--muted);font-size:12px;padding:3px 9px;cursor:pointer;font-family:inherit;">Bullets</button>
+            <button onclick="document.execCommand('insertOrderedList')" title="Numbered list" style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--muted);font-size:12px;padding:3px 9px;cursor:pointer;font-family:inherit;">Numbered</button>
+            <button onclick="(function(){var u=prompt('URL:');if(u)document.execCommand('createLink',false,u);})()" title="Insert link" style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--muted);font-size:12px;padding:3px 9px;cursor:pointer;font-family:inherit;">Link</button>
+            <select onchange="document.execCommand('fontSize',false,this.value);this.value='';" style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--muted);font-size:12px;padding:3px 6px;cursor:pointer;font-family:inherit;">
+              <option value="">Size</option>
+              <option value="1">Small</option>
+              <option value="3">Normal</option>
+              <option value="5">Large</option>
+              <option value="7">Huge</option>
+            </select>
+          </div>
+          <div id="guests-editor"
+            contenteditable="true"
+            oninput="guestsSyncFromVisual()"
+            style="min-height:180px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;color:var(--text);font-size:14px;line-height:1.6;outline:none;font-family:inherit;"></div>
+        </div>
+        <div id="guests-html-pane" style="display:none;padding:16px 20px;">
+          <textarea id="guests-html-editor" oninput="guestsSyncFromHtml()"
+            style="width:100%;height:220px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;font-family:monospace;padding:12px;box-sizing:border-box;resize:vertical;outline:none;line-height:1.5;transition:border-color var(--ease);"
+            placeholder="<p>Welcome to our home! Make yourself comfortable.</p>&#10;<p>Feel free to help yourself to anything in the kitchen...</p>"></textarea>
+        </div>
+        <div style="padding:0 20px 20px;display:flex;align-items:center;gap:12px;">
+          <button class="btn btn-primary" onclick="saveGuests()">Save Guests Page</button>
+          <div id="guests-save-hint" style="font-size:11px;color:var(--muted);"></div>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -1731,6 +1836,7 @@ function renderSection(id) {
   if (id === 'appearance')  renderAppearance();
   if (id === 'photoframe')  renderPhotoFrameSettings();
   if (id === 'customdash')  renderCDSection();
+  if (id === 'guests')      renderGuests();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -3929,6 +4035,78 @@ function deleteCDWidget() {
   pushData().then(function(){ renderCDGrid(); closeModal('cd-widget-modal'); toast('Widget removed'); }).catch(function(){});
 }
 
+
+// ═══════════════════════════════════════════════════════════
+//  GUESTS
+// ═══════════════════════════════════════════════════════════
+var _guestsTab = 'visual';
+
+function renderGuests() {
+  var g = D.guests || {};
+  var wifi = g.wifi || {};
+  var enabled = !!g.enabled;
+  var wifiEnabled = !!wifi.enabled;
+  document.getElementById('guests-enabled').checked = enabled;
+  document.getElementById('guests-enabled-lbl').textContent = enabled ? 'Enabled' : 'Disabled';
+  document.getElementById('guests-wifi-enabled').checked = wifiEnabled;
+  document.getElementById('guests-wifi-lbl').textContent = wifiEnabled ? 'Enabled' : 'Disabled';
+  document.getElementById('guests-wifi-ssid').value = wifi.ssid || '';
+  document.getElementById('guests-wifi-password').value = wifi.password || '';
+  var content = g.content || '';
+  document.getElementById('guests-editor').innerHTML = content;
+  document.getElementById('guests-html-editor').value = content;
+  // Reset to visual tab
+  _guestsTab = 'visual';
+  document.getElementById('guests-visual-pane').style.display = '';
+  document.getElementById('guests-html-pane').style.display = 'none';
+  document.getElementById('guests-tab-visual').style.borderBottomColor = 'var(--gold)';
+  document.getElementById('guests-tab-visual').style.color = 'var(--text)';
+  document.getElementById('guests-tab-html').style.borderBottomColor = 'transparent';
+  document.getElementById('guests-tab-html').style.color = 'var(--muted)';
+}
+
+function guestsSetTab(tab) {
+  _guestsTab = tab;
+  if (tab === 'visual') {
+    document.getElementById('guests-editor').innerHTML = document.getElementById('guests-html-editor').value;
+    document.getElementById('guests-visual-pane').style.display = '';
+    document.getElementById('guests-html-pane').style.display = 'none';
+    document.getElementById('guests-tab-visual').style.borderBottomColor = 'var(--gold)';
+    document.getElementById('guests-tab-visual').style.color = 'var(--text)';
+    document.getElementById('guests-tab-html').style.borderBottomColor = 'transparent';
+    document.getElementById('guests-tab-html').style.color = 'var(--muted)';
+  } else {
+    document.getElementById('guests-html-editor').value = document.getElementById('guests-editor').innerHTML;
+    document.getElementById('guests-visual-pane').style.display = 'none';
+    document.getElementById('guests-html-pane').style.display = '';
+    document.getElementById('guests-tab-visual').style.borderBottomColor = 'transparent';
+    document.getElementById('guests-tab-visual').style.color = 'var(--muted)';
+    document.getElementById('guests-tab-html').style.borderBottomColor = 'var(--gold)';
+    document.getElementById('guests-tab-html').style.color = 'var(--text)';
+  }
+}
+
+function guestsSyncFromVisual() {
+  document.getElementById('guests-html-editor').value = document.getElementById('guests-editor').innerHTML;
+}
+
+function guestsSyncFromHtml() {
+  document.getElementById('guests-editor').innerHTML = document.getElementById('guests-html-editor').value;
+}
+
+async function saveGuests() {
+  if (!D.guests) D.guests = {};
+  if (!D.guests.wifi) D.guests.wifi = {};
+  D.guests.enabled = document.getElementById('guests-enabled').checked;
+  D.guests.wifi.enabled = document.getElementById('guests-wifi-enabled').checked;
+  D.guests.wifi.ssid = document.getElementById('guests-wifi-ssid').value.trim();
+  D.guests.wifi.password = document.getElementById('guests-wifi-password').value;
+  D.guests.content = _guestsTab === 'visual'
+    ? document.getElementById('guests-editor').innerHTML
+    : document.getElementById('guests-html-editor').value;
+  await pushData();
+  toast('Guests page saved!');
+}
 
 async function init() {
   // Wire dedup checkbox to update its label live

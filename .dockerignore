@@ -4,3 +4,4 @@ docs/
 *.md
 config.json
 data.json
+.claude/

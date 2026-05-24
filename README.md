@@ -56,6 +56,12 @@ A self-hosted family dashboard built on top of [Home Assistant](https://www.home
 - Backed by a Home Assistant `todo.*` entity
 - Add and check off items directly from the dashboard
 
+### 👥 Guests
+- Optional **Guests page** toggled on/off from Admin
+- **Guest WiFi card** - enter your guest network SSID and password; a QR code is generated automatically so guests can scan and join on both Android and iPhone (no app required)
+- **Custom content editor** with Visual (rich text) and HTML modes - add anything: house rules, parking instructions, WiFi notes, local recommendations
+- Shown as a slide-out drawer from the top bar, same as the shopping list
+
 ### 👨‍👩‍👧 Family Members & Presence
 - Add family members with name, colour, emoji, or uploaded photo
 - **Live presence** - shows who is home based on HA `person.*` entities, with a coloured dot on each chore column
@@ -65,6 +71,7 @@ A self-hosted family dashboard built on top of [Home Assistant](https://www.home
 - Toggle lights, switches, climate, and any other HA entity from the dashboard
 - Custom icons, labels, and on/off service configuration per button
 - State reflected in real-time
+- **Climate full control** - press and hold any `climate.*` button for ~500ms to open a full control popup: turn on/off, set HVAC mode (Heat / Cool / Heat+Cool / Auto / Fan / Dry), adjust target temperature up/down, and set fan speed - only shows modes and fan speeds that the device actually supports
 
 ### 🌡️ Sensors
 - Display temperature, humidity, door/window, and any generic HA entity

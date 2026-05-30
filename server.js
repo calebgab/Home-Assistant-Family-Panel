@@ -1278,16 +1278,46 @@ server.listen(PORT, '0.0.0.0', () => {
 //  type and resetTimes (multi-daily), days (weekly), and
 //  weekOfMonth (monthly) fields.
 // ─────────────────────────────────────────────────────────
+
+// Returns current date/time parts in the given IANA timezone.
+// Falls back to returning null if the timezone string is invalid.
+function localDateParts(tz) {
+  try {
+    const now  = new Date();
+    const fmt  = new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false,
+    });
+    const parts = fmt.formatToParts(now);
+    const get   = t => parts.find(p => p.type === t)?.value ?? '';
+    const year  = parseInt(get('year'));
+    const month = parseInt(get('month')) - 1;  // 0-indexed
+    const day   = parseInt(get('day'));
+    const date  = `${get('year')}-${get('month')}-${get('day')}`;
+    let h = get('hour');
+    if (h === '24') h = '00';
+    const hm  = `${h}:${get('minute')}`;
+    const dow = new Date(`${date}T12:00:00Z`).getUTCDay();
+    return { date, hm, dow, year, month, day };
+  } catch { return null; }
+}
+
 async function choreResetTick() {
   let data;
   try { data = getLiveData(); } catch { return; }
   if (!Array.isArray(data.chores) || !data.chores.length) return;
 
-  const now       = new Date();
-  const todayDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-  const todayDow  = now.getDay();          // 0=Sun … 6=Sat
-  const todayHM   = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-  const weekOfMonth = Math.ceil(now.getDate() / 7); // 1-5
+  const now    = new Date();
+  const tz     = data.settings?.timezone?.trim() || '';
+  const parts  = tz ? localDateParts(tz) : null;
+
+  const todayDate   = parts?.date  ?? `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const todayDow    = parts?.dow   ?? now.getDay();
+  const todayHM     = parts?.hm    ?? `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const weekOfMonth = Math.ceil((parts?.day ?? now.getDate()) / 7);
+  const localMonth  = parts?.month ?? now.getMonth();
+  const localYear   = parts?.year  ?? now.getFullYear();
 
   let changed = false;
   const toNotify = []; // chores to send "now active" notifications for
@@ -1322,20 +1352,20 @@ async function choreResetTick() {
     if (ch.recur === 'monthly') {
       const allowedWeeks  = (ch.weekOfMonth && ch.weekOfMonth.length) ? ch.weekOfMonth : [1,2,3,4,5];
       const allowedMonths = (ch.months && ch.months.length) ? ch.months : null;
-      if (allowedMonths && !allowedMonths.includes(now.getMonth() + 1)) return ch;
-      const dd = new Date((doneDate || '2000-01-01') + 'T12:00:00');
-      if (dd.getMonth() !== now.getMonth() || dd.getFullYear() !== now.getFullYear()) reset = true;
+      if (allowedMonths && !allowedMonths.includes(localMonth + 1)) return ch;
+      const dd = new Date((doneDate || '2000-01-01') + 'T12:00:00Z');
+      if (dd.getUTCMonth() !== localMonth || dd.getUTCFullYear() !== localYear) reset = true;
       if (!reset && allowedWeeks.includes(weekOfMonth)) {
-        const doneWeek = Math.ceil(dd.getDate() / 7);
+        const doneWeek = Math.ceil(dd.getUTCDate() / 7);
         if (doneWeek !== weekOfMonth) reset = true;
       }
     }
 
     if (ch.recur === 'yearly') {
       const allowedMonths = (ch.months && ch.months.length) ? ch.months : null;
-      if (allowedMonths && !allowedMonths.includes(now.getMonth() + 1)) return ch;
-      const dd = new Date((doneDate || '2000-01-01') + 'T12:00:00');
-      if (dd.getFullYear() !== now.getFullYear()) reset = true;
+      if (allowedMonths && !allowedMonths.includes(localMonth + 1)) return ch;
+      const dd = new Date((doneDate || '2000-01-01') + 'T12:00:00Z');
+      if (dd.getUTCFullYear() !== localYear) reset = true;
     }
 
     if (ch.recur === 'once') return ch;

@@ -1013,6 +1013,15 @@ select option { background: var(--surface); }
         </div>
         <div class="setting-row">
           <div class="setting-info">
+            <div class="setting-name">Timezone</div>
+            <div class="setting-desc">IANA timezone used by the server for chore resets (e.g. Pacific/Auckland). Required when the server runs in a different timezone (e.g. UTC in Docker) to ensure resets happen at local midnight.</div>
+          </div>
+          <div class="setting-control">
+            <input type="text" id="cfg-timezone" placeholder="Pacific/Auckland" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r8);color:var(--text);font-size:12px;padding:5px 10px;outline:none;width:180px;">
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
             <div class="setting-name">Show Week Numbers</div>
             <div class="setting-desc">Display the ISO week number in the bottom-left corner of the first day of each week on the calendar.</div>
           </div>
@@ -2663,6 +2672,7 @@ function renderSettings() {
   document.getElementById('cfg-allday-expand-label').textContent = expand ? 'Enabled' : 'Disabled';
   document.getElementById('cfg-time-format').value = s.timeFormat || '24';
   document.getElementById('cfg-week-start').value = s.weekStart !== undefined ? s.weekStart : 1; // default Monday
+  document.getElementById('cfg-timezone').value = s.timezone || '';
   const showWeekNum = !!s.showWeekNum;
   document.getElementById('cfg-show-week-num').checked          = showWeekNum;
   document.getElementById('cfg-show-week-num-label').textContent = showWeekNum ? 'Enabled' : 'Disabled';
@@ -2694,6 +2704,7 @@ async function saveSettings() {
   D.settings.alldayExpand           = document.getElementById('cfg-allday-expand').checked;
   D.settings.timeFormat             = document.getElementById('cfg-time-format').value;
   D.settings.weekStart              = parseInt(document.getElementById('cfg-week-start').value);
+  D.settings.timezone               = document.getElementById('cfg-timezone').value.trim();
   D.settings.showWeekNum            = document.getElementById('cfg-show-week-num').checked;
   D.settings.showMoon               = document.getElementById('cfg-show-moon').checked;
   await pushData();

@@ -19,3 +19,4 @@ Thumbs.db
 # ── Legacy / unused ──────────────────────────────────────
 server.py
 .gitignore
+.hi

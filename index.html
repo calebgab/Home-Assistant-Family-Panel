@@ -3586,11 +3586,21 @@ async function enterPhotoFrame() {
   pfSlotA().style.backgroundImage = '';
   pfSlotB().style.backgroundImage = '';
 
-  // Load and show first photo
-  pfCurrentAsset = pfAssets[pfIndex];
-  const loaded = await pfShowSlide(pfSlotA(), pfCurrentAsset);
-  if (!loaded) {
-    console.warn('Photo frame: first image failed to load, asset:', pfCurrentAsset?.id);
+  // Load and show first photo — try up to 3 assets if the first one fails
+  let firstLoaded = false;
+  for (let attempt = 0; attempt < Math.min(3, pfAssets.length); attempt++) {
+    pfCurrentAsset = pfAssets[pfIndex];
+    firstLoaded = await pfShowSlide(pfSlotA(), pfCurrentAsset);
+    if (firstLoaded) break;
+    console.warn('Photo frame: first image failed to load, asset:', pfCurrentAsset?.id, '— trying next');
+    pfIndex = (pfIndex + 1) % pfAssets.length;
+  }
+  if (!firstLoaded) {
+    console.warn('Photo frame: could not load any initial photo, aborting');
+    frame.classList.remove('active');
+    pfActive = false;
+    resetIdleTimer();
+    return;
   }
   pfSlotA().classList.add('visible', 'kb');
 
@@ -3739,8 +3749,15 @@ async function pfGoPrev() {
   const currSlot = pfCurrent === 'a' ? pfSlotA() : pfSlotB();
 
   pfCurrentAsset = pfAssets[pfIndex];
-  await pfShowSlide(nextSlot, pfCurrentAsset);
+  const loaded = await pfShowSlide(nextSlot, pfCurrentAsset);
   pfInfoClose();
+
+  if (!loaded) {
+    const secs = D?.settings?.frameIntervalSecs ?? 20;
+    pfSlideTimer = setTimeout(pfAdvance, secs * 1000);
+    return;
+  }
+
   nextSlot.classList.add('kb');
   requestAnimationFrame(() => {
     nextSlot.classList.add('visible');
@@ -3786,8 +3803,15 @@ async function pfAdvance() {
   const currSlot = pfCurrent === 'a' ? pfSlotA() : pfSlotB();
 
   pfCurrentAsset = pfAssets[pfIndex];
-  await pfShowSlide(nextSlot, pfCurrentAsset);
+  const loaded = await pfShowSlide(nextSlot, pfCurrentAsset);
   pfInfoClose();
+
+  if (!loaded) {
+    // Image failed to load — skip it and try the next one rather than showing black
+    pfSlideTimer = setTimeout(pfAdvance, 1000);
+    return;
+  }
+
   nextSlot.classList.add('kb');
 
   // Fade in next, fade out current

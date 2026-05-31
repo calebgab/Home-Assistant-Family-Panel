@@ -604,6 +604,22 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 #ha-status.ok      { color: var(--green); border-color: rgba(93,184,122,.3); background: rgba(93,184,122,.1); }
 #ha-status.error   { color: var(--red);   border-color: rgba(232,96,96,.3);  background: rgba(232,96,96,.1); }
 #ha-status.loading { color: var(--muted); border-color: var(--border); background: var(--surface2); }
+/* ── MEDIA PLAYER WIDGET ── */
+#media-card { display: none; }
+.mp-art { width: 46px; height: 46px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+.mp-art-ph { width: 46px; height: 46px; border-radius: 6px; background: var(--surface2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.mp-track { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
+.mp-artist { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.mp-progress { height: 3px; background: var(--border); border-radius: 2px; margin: 7px 0 5px; cursor: pointer; }
+.mp-progress-fill { height: 100%; background: var(--gold); border-radius: 2px; transition: width .5s linear; pointer-events: none; }
+.mp-ctrl { background: none; border: none; color: var(--muted); cursor: pointer; padding: 3px; border-radius: 4px; display: flex; align-items: center; transition: color var(--ease); }
+.mp-ctrl:hover, .mp-ctrl.active { color: var(--text); }
+.mp-ctrl.pp { color: var(--gold); }
+.mp-vol { -webkit-appearance: none; appearance: none; width: 56px; height: 3px; background: var(--border); border-radius: 2px; outline: none; cursor: pointer; }
+.mp-vol::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%; background: var(--gold); cursor: pointer; }
+.mp-src-sel { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 10px; font-family: 'DM Sans', sans-serif; padding: 3px 6px; outline: none; cursor: pointer; min-width: 0; flex: 1; }
+.mp-browse { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; color: var(--muted); font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; padding: 3px 10px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all var(--ease); white-space: nowrap; flex-shrink: 0; }
+.mp-browse:hover { border-color: var(--gold-mid); color: var(--text); }
 /* ── PHOTO FRAME ── */
 #photoframe {
   position: fixed; inset: 0; z-index: 150;
@@ -675,6 +691,18 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/>
   </svg>
+</div>
+
+<!-- MEDIA BROWSER OVERLAY -->
+<div id="media-browser-overlay" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center;" onclick="if(event.target===this)closeMediaBrowser()">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;width:360px;max-width:calc(100vw - 40px);max-height:80vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);" id="media-browser-title">Browse</div>
+      <button onclick="closeMediaBrowser()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:2px 6px;">×</button>
+    </div>
+    <div id="media-browser-crumb" style="display:none;padding:7px 14px 0;font-size:10px;color:var(--muted);flex-shrink:0;"></div>
+    <div id="media-browser-list" style="overflow-y:auto;flex:1;padding:6px 8px;"></div>
+  </div>
 </div>
 
 <!-- PHOTO FRAME OVERLAY -->
@@ -818,6 +846,10 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
     <div class="card" id="controls-card">
       <div class="card-header">Controls</div>
       <div id="controls-grid"></div>
+    </div>
+    <div class="card" id="media-card">
+      <div class="card-header">Now Playing</div>
+      <div id="media-body" style="padding:11px 14px 10px;"></div>
     </div>
     <div class="card" id="sensors-card">
       <div class="card-header">Home</div>
@@ -3431,6 +3463,8 @@ async function pollData() {
       // Re-apply theme in case settings changed
       const mode = D?.settings?.themeMode || _getCurrentMode();
       applyThemePreset(_getPresetForMode(mode, D.settings), mode);
+      // Re-init media player in case settings changed
+      initMedia();
       // Re-arm idle timer in case frameIdleMinutes changed
       if (D?.settings?.immichUrl && D?.settings?.immichApiKey && D?.settings?.immichAlbumId) {
         startIdleDetection();
@@ -3472,6 +3506,322 @@ function calRangeForMonth(date) {
   const end   = new Date(y, m + 2, 1); // exclusive start of month after next
   const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   return { start: fmt(start), end: fmt(end) };
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MEDIA PLAYER
+// ═══════════════════════════════════════════════════════════
+let mediaState       = null;
+let mediaPollTimer   = null;
+let mediaPosTimer    = null;
+let mediaVolDebounce = null;
+let mediaBrowserPath = []; // navigation breadcrumb stack
+
+function initMedia() {
+  const enabled = D?.settings?.mediaEnabled;
+  const entity  = D?.settings?.mediaEntity?.trim();
+  const card    = document.getElementById('media-card');
+  if (!card) return;
+  if (!enabled || !entity) {
+    card.style.display = 'none';
+    clearInterval(mediaPollTimer); mediaPollTimer = null;
+    clearInterval(mediaPosTimer);  mediaPosTimer  = null;
+    return;
+  }
+  card.style.display = '';
+  pollMedia();
+  if (!mediaPollTimer) mediaPollTimer = setInterval(pollMedia, 5000);
+}
+
+async function pollMedia() {
+  const entity = D?.settings?.mediaEntity?.trim();
+  if (!entity) return;
+  try {
+    const r = await fetch(`/api/ha/media/state?entity=${encodeURIComponent(entity)}`);
+    if (!r.ok) return;
+    mediaState = await r.json();
+    renderMedia(mediaState);
+  } catch {}
+}
+
+function renderMedia(s) {
+  const body = document.getElementById('media-body');
+  if (!body) return;
+
+  const playing = s.state === 'playing';
+  const active  = playing || s.state === 'paused';
+
+  // Album art
+  const artSrc = s.albumArt ? `/api/ha/media/image?path=${encodeURIComponent(s.albumArt)}` : null;
+  const artHtml = artSrc
+    ? `<img src="${artSrc}" class="mp-art" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+       <div class="mp-art-ph" style="display:none">🎵</div>`
+    : `<div class="mp-art-ph">🎵</div>`;
+
+  // Track info
+  const trackHtml = active
+    ? `<div class="mp-track">${_esc(s.title || 'Unknown track')}</div>
+       <div class="mp-artist">${_esc([s.artist, s.album].filter(Boolean).join(' · '))}</div>`
+    : `<div class="mp-track" style="color:var(--muted)">${s.state === 'unavailable' ? 'Unavailable' : s.state === 'off' ? 'Off' : 'Not playing'}</div>
+       <div class="mp-artist"></div>`;
+
+  // Progress bar (display only, click to seek)
+  const pct = (s.duration > 0 && s.position > 0) ? Math.min(100, (s.position / s.duration) * 100) : 0;
+  const progressHtml = active
+    ? `<div class="mp-progress" onclick="mpSeekClick(event,this,${s.duration})">
+         <div class="mp-progress-fill" id="mp-pfill" style="width:${pct}%"></div>
+       </div>`
+    : '';
+
+  // Controls
+  const ppIcon = playing
+    ? `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>`
+    : `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>`;
+
+  const ctrlsHtml = `
+    <div style="display:flex;align-items:center;gap:4px;margin-top:4px;">
+      <button class="mp-ctrl" onclick="mediaCtrl('prev')" title="Previous">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+      </button>
+      <button class="mp-ctrl pp" onclick="mediaCtrl('play_pause')" title="${playing ? 'Pause' : 'Play'}">${ppIcon}</button>
+      <button class="mp-ctrl" onclick="mediaCtrl('next')" title="Next">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm8.5-6v6h2V6h-2z"/></svg>
+      </button>
+      <div style="flex:1"></div>
+      <svg viewBox="0 0 24 24" width="13" height="13" style="color:var(--muted);flex-shrink:0;margin-right:2px" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+      <input type="range" class="mp-vol" min="0" max="100" value="${s.volume ?? 50}"
+        oninput="mediaSetVol(this.value)" onchange="mediaSetVol(this.value)" title="Volume">
+    </div>`;
+
+  // Source / speaker selector
+  const speakers = D?.settings?.mediaSpeakers || [];
+  const sources  = s.sources || [];
+  let optsHtml = '';
+  if (sources.length) {
+    optsHtml += `<optgroup label="Devices">${sources.map(src =>
+      `<option value="src:${_esc(src)}" ${s.source === src ? 'selected' : ''}>${_esc(src)}</option>`
+    ).join('')}</optgroup>`;
+  }
+  if (speakers.length) {
+    optsHtml += `<optgroup label="Speakers">${speakers.map(sp =>
+      `<option value="ent:${_esc(sp.entity)}">${_esc(sp.label || sp.entity)}</option>`
+    ).join('')}</optgroup>`;
+  }
+  const srcHtml = optsHtml
+    ? `<select class="mp-src-sel" onchange="mediaSwitchSrc(this.value)">${optsHtml}</select>`
+    : '';
+
+  const mediaType = D?.settings?.mediaType || 'spotify';
+  const browseBtn = mediaType !== 'generic'
+    ? `<button class="mp-browse" onclick="openMediaBrowser()">Browse</button>`
+    : '';
+
+  const bottomHtml = (srcHtml || browseBtn)
+    ? `<div style="display:flex;gap:6px;align-items:center;margin-top:7px;">${srcHtml}${browseBtn}</div>`
+    : '';
+
+  body.innerHTML = `
+    <div style="display:flex;gap:10px;align-items:flex-start;">
+      ${artHtml}
+      <div style="flex:1;min-width:0;">
+        ${trackHtml}
+        ${progressHtml}
+        ${ctrlsHtml}
+      </div>
+    </div>
+    ${bottomHtml}`;
+
+  if (playing) _mpStartPosTick(s.position, s.duration, s.positionUpdated);
+  else _mpStopPosTick();
+}
+
+function _mpStartPosTick(pos, dur, updatedAt) {
+  _mpStopPosTick();
+  if (!dur) return;
+  const serverPos = pos || 0;
+  const serverAt  = updatedAt ? new Date(updatedAt).getTime() : Date.now();
+  mediaPosTimer = setInterval(() => {
+    const elapsed = (Date.now() - serverAt) / 1000;
+    const current = Math.min(dur, serverPos + elapsed);
+    const fill = document.getElementById('mp-pfill');
+    if (fill) fill.style.width = Math.min(100, (current / dur) * 100) + '%';
+  }, 500);
+}
+function _mpStopPosTick() {
+  if (mediaPosTimer) { clearInterval(mediaPosTimer); mediaPosTimer = null; }
+}
+
+function mpSeekClick(e, el, duration) {
+  if (!duration) return;
+  const rect = el.getBoundingClientRect();
+  const pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  const pos  = Math.round(pct * duration);
+  const entity = D?.settings?.mediaEntity?.trim();
+  if (!entity) return;
+  fetch('/api/ha/media/control', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ entity, action: 'seek', seek_position: pos }),
+  }).then(() => setTimeout(pollMedia, 600)).catch(() => {});
+}
+
+async function mediaCtrl(action) {
+  const entity = D?.settings?.mediaEntity?.trim();
+  if (!entity) return;
+  try {
+    await fetch('/api/ha/media/control', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entity, action }),
+    });
+    setTimeout(pollMedia, 600);
+  } catch {}
+}
+
+function mediaSetVol(v) {
+  clearTimeout(mediaVolDebounce);
+  mediaVolDebounce = setTimeout(async () => {
+    const entity = D?.settings?.mediaEntity?.trim();
+    if (!entity) return;
+    try {
+      await fetch('/api/ha/media/control', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entity, action: 'volume_set', volume: parseInt(v) }),
+      });
+    } catch {}
+  }, 150);
+}
+
+async function mediaSwitchSrc(value) {
+  const entity = D?.settings?.mediaEntity?.trim();
+  if (!entity) return;
+  if (value.startsWith('src:')) {
+    const source = value.slice(4);
+    try {
+      await fetch('/api/ha/media/source', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entity, source }),
+      });
+      setTimeout(pollMedia, 800);
+    } catch {}
+  } else if (value.startsWith('ent:')) {
+    const target = value.slice(4);
+    if (mediaState?.mediaContentId && mediaState?.mediaContentType) {
+      try {
+        await fetch('/api/ha/media/play', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entity: target, media_content_id: mediaState.mediaContentId, media_content_type: mediaState.mediaContentType }),
+        });
+        setTimeout(pollMedia, 1000);
+      } catch {}
+    }
+  }
+}
+
+// ── Media Browser ─────────────────────────────────────────
+function openMediaBrowser() {
+  const overlay = document.getElementById('media-browser-overlay');
+  if (!overlay) return;
+  overlay.style.display = 'flex';
+  mediaBrowserPath = [];
+  _loadBrowser(null, null, 'Browse');
+}
+function closeMediaBrowser() {
+  const overlay = document.getElementById('media-browser-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+async function _loadBrowser(type, id, title) {
+  const entity = D?.settings?.mediaEntity?.trim();
+  if (!entity) return;
+  document.getElementById('media-browser-title').textContent = title || 'Browse';
+  const list = document.getElementById('media-browser-list');
+  list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:12px;">Loading…</div>';
+  const crumb = document.getElementById('media-browser-crumb');
+  if (mediaBrowserPath.length) {
+    crumb.style.display = 'block';
+    crumb.innerHTML = mediaBrowserPath.map((p, i) =>
+      `<span style="cursor:pointer;color:var(--muted)" onclick="_browserGoBack(${i})">${_esc(p.title)}</span>`
+    ).join(' › ') + (mediaBrowserPath.length ? ' › ' : '');
+  } else {
+    crumb.style.display = 'none';
+  }
+  try {
+    let url = `/api/ha/media/browse?entity=${encodeURIComponent(entity)}`;
+    if (type) url += `&type=${encodeURIComponent(type)}`;
+    if (id)   url += `&id=${encodeURIComponent(id)}`;
+    const r = await fetch(url);
+    if (!r.ok) { list.innerHTML = `<div style="text-align:center;color:var(--err);padding:20px;font-size:12px;">Error ${r.status}</div>`; return; }
+    const data = await r.json();
+    _renderBrowserItems(data.children || [], type, id, title);
+  } catch (e) {
+    list.innerHTML = `<div style="text-align:center;color:var(--err);padding:20px;font-size:12px;">${_esc(e.message)}</div>`;
+  }
+}
+
+function _renderBrowserItems(items, parentType, parentId, parentTitle) {
+  const list = document.getElementById('media-browser-list');
+  if (!items.length) {
+    list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:12px;">No items found.</div>';
+    return;
+  }
+  list.innerHTML = items.map(item => {
+    const thumb = item.thumbnail
+      ? `<img src="${_esc(item.thumbnail)}" style="width:38px;height:38px;border-radius:5px;object-fit:cover;flex-shrink:0" onerror="this.style.opacity='.2'">`
+      : `<div style="width:38px;height:38px;border-radius:5px;background:var(--surface2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;">🎵</div>`;
+    const safeId   = _esc(item.media_content_id   || '');
+    const safeType = _esc(item.media_content_type  || '');
+    const safeTitle = _esc(item.title || 'Untitled');
+    const playBtn = item.can_play
+      ? `<button data-id="${safeId}" data-type="${safeType}" onclick="_browserPlay(this)"
+           style="background:var(--gold);border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#0f0f0e;transition:opacity .15s;" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'" title="Play">
+           <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+         </button>`
+      : '';
+    const expandAttr = item.can_expand
+      ? `data-expand-id="${safeId}" data-expand-type="${safeType}" data-expand-title="${safeTitle}" onclick="_browserExpand(this)" style="cursor:pointer"`
+      : `style="cursor:default"`;
+    return `<div style="display:flex;align-items:center;gap:9px;padding:7px 6px;border-radius:8px;transition:background .12s" ${expandAttr}
+        onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+        ${thumb}
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${safeTitle}</div>
+          ${item.media_content_type ? `<div style="font-size:10px;color:var(--muted)">${_esc(item.media_content_type)}</div>` : ''}
+        </div>
+        ${playBtn}
+      </div>`;
+  }).join('');
+}
+
+function _browserExpand(el) {
+  const id    = el.dataset.expandId;
+  const type  = el.dataset.expandType;
+  const title = el.dataset.expandTitle;
+  mediaBrowserPath.push({ type, id, title });
+  _loadBrowser(type, id, title);
+}
+
+function _browserGoBack(idx) {
+  mediaBrowserPath = mediaBrowserPath.slice(0, idx);
+  const prev = mediaBrowserPath[mediaBrowserPath.length - 1];
+  _loadBrowser(prev?.type || null, prev?.id || null, prev?.title || 'Browse');
+}
+
+async function _browserPlay(btn) {
+  const entity = D?.settings?.mediaEntity?.trim();
+  if (!entity) return;
+  const contentId   = btn.dataset.id;
+  const contentType = btn.dataset.type;
+  try {
+    const r = await fetch('/api/ha/media/play', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entity, media_content_id: contentId, media_content_type: contentType }),
+    });
+    if (r.ok) { closeMediaBrowser(); setTimeout(pollMedia, 1200); }
+  } catch {}
+}
+
+function _esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -3889,6 +4239,8 @@ async function init() {
     const mode = D?.settings?.themeMode || savedMode;
     const preset = _getPresetForMode(mode, D?.settings);
     applyThemePreset(preset, mode);
+    // Start media player widget if enabled
+    initMedia();
     // Start idle detection for photo frame (only if Immich is configured)
     if (D?.settings?.immichUrl && D?.settings?.immichApiKey && D?.settings?.immichAlbumId) {
       startIdleDetection();

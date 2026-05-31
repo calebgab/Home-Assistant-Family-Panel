@@ -637,6 +637,10 @@ select option { background: var(--surface); }
         <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>
         Photo Frame
       </button>
+      <button class="sidebar-btn" onclick="showSection('mediaplayer')">
+        <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m9 9 10.5-3m0 6.553v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 1 1-.99-3.467l2.31-.66a2.25 2.25 0 0 0 1.632-2.163Zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 0 1-.99-3.467l2.31-.66A2.25 2.25 0 0 0 9 15.553Z"/></svg>
+        Media Player
+      </button>
       <button class="sidebar-btn" onclick="showSection('reset')">
         <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
         Reset Chores
@@ -1189,6 +1193,64 @@ proxy_set_header X-Forwarded-Proto $scheme;</pre>
           <button class="btn btn-primary" onclick="savePhotoFrameSettings()">Save</button>
           <button class="btn btn-secondary" onclick="testImmich()" id="test-immich-btn">Test Connection</button>
           <span id="immich-test-result" style="font-size:12px;"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ MEDIA PLAYER ══════════════ -->
+    <div id="section-mediaplayer" class="section">
+      <div class="page-title">Media Player</div>
+      <div class="page-sub">Control music from the dashboard using a Home Assistant media_player entity. Spotify is natively supported. YouTube Music requires the <strong>ytube_music_player</strong> HACS integration.</div>
+
+      <div class="panel">
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Enable Media Player</div>
+            <div class="setting-desc">Show a persistent Now Playing widget on the dashboard.</div>
+          </div>
+          <div class="setting-control">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="cfg-media-enabled" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer;" onchange="document.getElementById('cfg-media-enabled-label').textContent=this.checked?'Enabled':'Disabled'">
+              <span style="font-size:12px;color:var(--muted)" id="cfg-media-enabled-label">Disabled</span>
+            </label>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Media Player Entity</div>
+            <div class="setting-desc">Primary HA media_player entity — e.g. <code style="font-size:10px;background:var(--surface2);padding:1px 5px;border-radius:3px;">media_player.spotify_caleb</code></div>
+          </div>
+          <div class="setting-control" style="min-width:230px;">
+            <input type="text" id="cfg-media-entity" placeholder="media_player.spotify_caleb" style="width:100%;">
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Player Type</div>
+            <div class="setting-desc">Controls how playlist browsing works. Spotify is native to HA. YouTube Music requires <code style="font-size:10px;background:var(--surface2);padding:1px 5px;border-radius:3px;">ytube_music_player</code> from HACS. Generic shows controls only.</div>
+          </div>
+          <div class="setting-control">
+            <select id="cfg-media-type" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r8);color:var(--text);font-size:12px;padding:5px 10px;cursor:pointer;outline:none;">
+              <option value="spotify">Spotify</option>
+              <option value="ytube">YouTube Music (ytube_music_player)</option>
+              <option value="generic">Generic (controls only, no browsing)</option>
+            </select>
+          </div>
+        </div>
+        <div class="setting-row" style="flex-direction:column;align-items:flex-start;">
+          <div class="setting-info" style="margin-bottom:10px;">
+            <div class="setting-name">Additional Speakers</div>
+            <div class="setting-desc">Extra HA media_player entities to route playback to (e.g. different rooms or cast devices). These appear alongside Spotify Connect devices in the speaker picker on the dashboard.</div>
+          </div>
+          <div id="media-speakers-list" style="width:100%;margin-bottom:6px;"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <input type="text" id="new-speaker-entity" placeholder="media_player.living_room" style="flex:1;min-width:160px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r8);color:var(--text);font-size:12px;padding:5px 10px;outline:none;">
+            <input type="text" id="new-speaker-label" placeholder="Living Room" style="width:120px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r8);color:var(--text);font-size:12px;padding:5px 10px;outline:none;">
+            <button class="btn btn-secondary btn-sm" onclick="addMediaSpeaker()">Add</button>
+          </div>
+        </div>
+        <div class="setting-row" style="border:none;padding-bottom:16px;">
+          <button class="btn btn-primary" onclick="saveMediaSettings()">Save</button>
         </div>
       </div>
     </div>
@@ -1844,6 +1906,7 @@ function renderSection(id) {
   if (id === 'entities')   renderEntities();
   if (id === 'appearance')  renderAppearance();
   if (id === 'photoframe')  renderPhotoFrameSettings();
+  if (id === 'mediaplayer') renderMediaSettings();
   if (id === 'customdash')  renderCDSection();
   if (id === 'guests')      renderGuests();
 }
@@ -2753,6 +2816,63 @@ async function savePhotoFrameSettings() {
   }
   await pushData();
   toast('Photo frame settings saved!');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MEDIA PLAYER SETTINGS
+// ═══════════════════════════════════════════════════════════
+function renderMediaSettings() {
+  const s = D.settings || {};
+  const enabled = !!s.mediaEnabled;
+  document.getElementById('cfg-media-enabled').checked = enabled;
+  document.getElementById('cfg-media-enabled-label').textContent = enabled ? 'Enabled' : 'Disabled';
+  document.getElementById('cfg-media-entity').value = s.mediaEntity || '';
+  document.getElementById('cfg-media-type').value   = s.mediaType   || 'spotify';
+  renderMediaSpeakersList();
+}
+
+function renderMediaSpeakersList() {
+  const speakers = (D.settings || {}).mediaSpeakers || [];
+  const el = document.getElementById('media-speakers-list');
+  if (!speakers.length) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:4px 0;">No additional speakers configured.</div>';
+    return;
+  }
+  el.innerHTML = speakers.map((sp, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:600;color:var(--text);">${sp.label || sp.entity}</div>
+        <div style="font-size:10px;color:var(--muted);">${sp.entity}</div>
+      </div>
+      <button onclick="removeMediaSpeaker(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:2px 6px;transition:color var(--ease);" onmouseover="this.style.color='var(--err)'" onmouseout="this.style.color='var(--muted)'">×</button>
+    </div>`).join('');
+}
+
+function addMediaSpeaker() {
+  const entity = document.getElementById('new-speaker-entity').value.trim();
+  const label  = document.getElementById('new-speaker-label').value.trim();
+  if (!entity) { toast('Entity ID is required', 'err'); return; }
+  D.settings = D.settings || {};
+  D.settings.mediaSpeakers = D.settings.mediaSpeakers || [];
+  if (D.settings.mediaSpeakers.some(s => s.entity === entity)) { toast('Already in list', 'err'); return; }
+  D.settings.mediaSpeakers.push({ entity, label: label || entity });
+  document.getElementById('new-speaker-entity').value = '';
+  document.getElementById('new-speaker-label').value  = '';
+  renderMediaSpeakersList();
+}
+
+function removeMediaSpeaker(i) {
+  D.settings.mediaSpeakers = (D.settings.mediaSpeakers || []).filter((_, idx) => idx !== i);
+  renderMediaSpeakersList();
+}
+
+async function saveMediaSettings() {
+  D.settings = D.settings || {};
+  D.settings.mediaEnabled = document.getElementById('cfg-media-enabled').checked;
+  D.settings.mediaEntity  = document.getElementById('cfg-media-entity').value.trim();
+  D.settings.mediaType    = document.getElementById('cfg-media-type').value;
+  await pushData();
+  toast('Media player settings saved!');
 }
 
 // ═══════════════════════════════════════════════════════════

@@ -1059,6 +1059,174 @@ code{background:#f4f1eb;padding:2px 7px;border-radius:4px;font-size:12px;}</styl
     return;
   }
 
+  // ── /api/ha/media/state  GET ─────────────────────────────────────────────
+  if (pathname === '/api/ha/media/state' && method === 'GET') {
+    try {
+      const qs     = req.url.includes('?') ? req.url.slice(req.url.indexOf('?') + 1) : '';
+      const entity = new URLSearchParams(qs).get('entity');
+      if (!entity) { sendJSON(res, 400, { error: 'entity param required' }); return; }
+      const r = await haRequest('GET', `/api/states/${entity}`);
+      if (r.status >= 400) { sendJSON(res, r.status, { error: `HA returned ${r.status}` }); return; }
+      const attr = r.body.attributes || {};
+      sendJSON(res, 200, {
+        state:            r.body.state               ?? 'unknown',
+        title:            attr.media_title           || null,
+        artist:           attr.media_artist          || null,
+        album:            attr.media_album_name      || null,
+        albumArt:         attr.entity_picture        || null,
+        position:         attr.media_position        || 0,
+        duration:         attr.media_duration        || 0,
+        positionUpdated:  attr.media_position_updated_at || null,
+        volume:           attr.volume_level != null ? Math.round(attr.volume_level * 100) : null,
+        muted:            attr.is_volume_muted        || false,
+        source:           attr.source                || null,
+        sources:          attr.source_list           || [],
+        shuffle:          attr.shuffle               || false,
+        repeat:           attr.repeat               || 'off',
+        mediaContentType: attr.media_content_type    || null,
+        mediaContentId:   attr.media_content_id      || null,
+      });
+    } catch (e) {
+      console.error('  ✗ /api/ha/media/state error:', e.message);
+      sendJSON(res, 502, { error: e.message });
+    }
+    return;
+  }
+
+  // ── /api/ha/media/browse  GET ─────────────────────────────────────────────
+  if (pathname === '/api/ha/media/browse' && method === 'GET') {
+    try {
+      const qs     = req.url.includes('?') ? req.url.slice(req.url.indexOf('?') + 1) : '';
+      const params = new URLSearchParams(qs);
+      const entity = params.get('entity');
+      const type   = params.get('type') || '';
+      const id     = params.get('id')   || '';
+      if (!entity) { sendJSON(res, 400, { error: 'entity param required' }); return; }
+      const body = { entity_id: entity };
+      if (type) body.media_content_type = type;
+      if (id)   body.media_content_id   = id;
+      const r = await haRequest('POST', '/api/services/media_player/browse_media?return_response=true', body);
+      if (r.status >= 400) { sendJSON(res, r.status, { error: `HA returned ${r.status}`, detail: r.body }); return; }
+      const resp = r.body?.service_response?.[entity] || r.body?.[entity] || r.body;
+      sendJSON(res, 200, resp || {});
+    } catch (e) {
+      console.error('  ✗ /api/ha/media/browse error:', e.message);
+      sendJSON(res, 502, { error: e.message });
+    }
+    return;
+  }
+
+  // ── /api/ha/media/play  POST ──────────────────────────────────────────────
+  if (pathname === '/api/ha/media/play' && method === 'POST') {
+    try {
+      const raw = await readBody(req);
+      const { entity, media_content_id, media_content_type } = JSON.parse(raw);
+      if (!entity || !media_content_id || !media_content_type) {
+        sendJSON(res, 400, { error: 'entity, media_content_id, media_content_type required' }); return;
+      }
+      const r = await haRequest('POST', '/api/services/media_player/play_media', {
+        entity_id: entity, media_content_id, media_content_type,
+      });
+      if (r.status >= 400) { sendJSON(res, r.status, { error: `HA returned ${r.status}`, detail: r.body }); return; }
+      sendJSON(res, 200, { ok: true });
+    } catch (e) {
+      console.error('  ✗ /api/ha/media/play error:', e.message);
+      sendJSON(res, 502, { error: e.message });
+    }
+    return;
+  }
+
+  // ── /api/ha/media/control  POST ───────────────────────────────────────────
+  // action: play_pause | play | pause | next | prev | stop | volume_set | shuffle_set | repeat_set | seek
+  if (pathname === '/api/ha/media/control' && method === 'POST') {
+    try {
+      const raw = await readBody(req);
+      const { entity, action, volume, shuffle, repeat, seek_position } = JSON.parse(raw);
+      if (!entity || !action) { sendJSON(res, 400, { error: 'entity and action required' }); return; }
+      const serviceMap = {
+        play_pause:  'media_play_pause',
+        play:        'media_play',
+        pause:       'media_pause',
+        next:        'media_next_track',
+        prev:        'media_previous_track',
+        stop:        'media_stop',
+        volume_set:  'volume_set',
+        mute_toggle: 'volume_mute',
+        shuffle_set: 'shuffle_set',
+        repeat_set:  'repeat_set',
+        seek:        'media_seek',
+      };
+      const svc = serviceMap[action];
+      if (!svc) { sendJSON(res, 400, { error: `Unknown action: ${action}` }); return; }
+      const svcData = { entity_id: entity };
+      if (action === 'volume_set')   svcData.volume_level    = Math.max(0, Math.min(1, (volume ?? 50) / 100));
+      if (action === 'mute_toggle')  svcData.is_volume_muted = true;
+      if (action === 'shuffle_set')  svcData.shuffle         = !!shuffle;
+      if (action === 'repeat_set')   svcData.repeat          = repeat  || 'off';
+      if (action === 'seek')         svcData.seek_position   = seek_position ?? 0;
+      const r = await haRequest('POST', `/api/services/media_player/${svc}`, svcData);
+      if (r.status >= 400) { sendJSON(res, r.status, { error: `HA returned ${r.status}`, detail: r.body }); return; }
+      sendJSON(res, 200, { ok: true });
+    } catch (e) {
+      console.error('  ✗ /api/ha/media/control error:', e.message);
+      sendJSON(res, 502, { error: e.message });
+    }
+    return;
+  }
+
+  // ── /api/ha/media/source  POST ────────────────────────────────────────────
+  if (pathname === '/api/ha/media/source' && method === 'POST') {
+    try {
+      const raw = await readBody(req);
+      const { entity, source } = JSON.parse(raw);
+      if (!entity || !source) { sendJSON(res, 400, { error: 'entity and source required' }); return; }
+      const r = await haRequest('POST', '/api/services/media_player/select_source', {
+        entity_id: entity, source,
+      });
+      if (r.status >= 400) { sendJSON(res, r.status, { error: `HA returned ${r.status}`, detail: r.body }); return; }
+      sendJSON(res, 200, { ok: true });
+    } catch (e) {
+      console.error('  ✗ /api/ha/media/source error:', e.message);
+      sendJSON(res, 502, { error: e.message });
+    }
+    return;
+  }
+
+  // ── /api/ha/media/image  GET ──────────────────────────────────────────────
+  // Proxies album art (entity_picture is a relative HA path like /api/media_player_proxy/...)
+  if (pathname === '/api/ha/media/image' && method === 'GET') {
+    try {
+      const qs      = req.url.includes('?') ? req.url.slice(req.url.indexOf('?') + 1) : '';
+      const imgPath = new URLSearchParams(qs).get('path');
+      if (!imgPath) { res.writeHead(400); res.end(); return; }
+      const imgBuf = await new Promise((resolve, reject) => {
+        let base;
+        try { base = new URL(HA_URL); } catch(e) { return reject(e); }
+        const isHttps = base.protocol === 'https:';
+        const lib     = isHttps ? require('https') : require('http');
+        const port    = base.port ? parseInt(base.port, 10) : (isHttps ? 443 : 80);
+        const req2 = lib.request({
+          hostname: base.hostname, port, path: imgPath, method: 'GET',
+          headers: { 'Authorization': 'Bearer ' + HA_TOKEN, 'Accept': 'image/*' },
+        }, res2 => {
+          const chunks = [];
+          res2.on('data', c => chunks.push(c));
+          res2.on('end', () => resolve({ buf: Buffer.concat(chunks), ct: res2.headers['content-type'] || 'image/jpeg', status: res2.statusCode }));
+        });
+        req2.setTimeout(8000, () => { req2.destroy(); reject(new Error('timeout')); });
+        req2.on('error', reject);
+        req2.end();
+      });
+      if (imgBuf.status !== 200) { res.writeHead(imgBuf.status); res.end(); return; }
+      res.writeHead(200, { 'Content-Type': imgBuf.ct, 'Content-Length': imgBuf.buf.length, 'Cache-Control': 'public, max-age=30' });
+      res.end(imgBuf.buf);
+    } catch (e) {
+      console.error('  ✗ /api/ha/media/image error:', e.message);
+      res.writeHead(502); res.end();
+    }
+    return;
+  }
+
   // -- /api/ha/camera/:entityId  GET ----------------------------------------
   // Proxies HA camera snapshots so the dashboard never needs direct HA access.
   if (pathname.startsWith('/api/ha/camera/') && method === 'GET') {

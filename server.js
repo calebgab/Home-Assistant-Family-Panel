@@ -1095,7 +1095,7 @@ code{background:#f4f1eb;padding:2px 7px;border-radius:4px;font-size:12px;}</styl
         title:            attr.media_title           || null,
         artist:           attr.media_artist          || null,
         album:            attr.media_album_name      || null,
-        albumArt:         attr.entity_picture        || null,
+        albumArt:         attr.entity_picture || attr.media_image_url || null,
         position:         attr.media_position        || 0,
         duration:         attr.media_duration        || 0,
         positionUpdated:  attr.media_position_updated_at || null,
@@ -1128,9 +1128,27 @@ code{background:#f4f1eb;padding:2px 7px;border-radius:4px;font-size:12px;}</styl
       if (type) body.media_content_type = type;
       if (id)   body.media_content_id   = id;
       const r = await haRequest('POST', '/api/services/media_player/browse_media?return_response=true', body);
+      const srKeys = r.body?.service_response ? Object.keys(r.body.service_response).join(',') : 'n/a';
+      console.log(`  ← browse_media status=${r.status} body_keys=${Object.keys(r.body||{}).join(',')} service_response_keys=${srKeys.slice(0,120)}`);
       if (r.status >= 400) { sendJSON(res, r.status, { error: `HA returned ${r.status}`, detail: r.body }); return; }
-      const resp = r.body?.service_response?.[entity] || r.body?.[entity] || r.body;
-      sendJSON(res, 200, resp || {});
+      // HA wraps the result under service_response.[entity_id] (HA 2023.7+)
+      // Some versions/integrations return the tree at the top level or under the entity key directly
+      const wrapped = r.body?.service_response?.[entity]
+                   ?? r.body?.[entity]
+                   ?? null;
+      // If we got a proper media tree, return it
+      if (wrapped && (wrapped.children !== undefined || wrapped.title !== undefined)) {
+        sendJSON(res, 200, wrapped);
+        return;
+      }
+      // If r.body itself looks like a media tree, return it
+      if (r.body && !Array.isArray(r.body) && (r.body.children !== undefined || r.body.title !== undefined)) {
+        sendJSON(res, 200, r.body);
+        return;
+      }
+      // Nothing useful -- return a diagnostic error so the client can show it
+      console.warn('  ✗ browse_media: could not find media tree in response. Full body:', JSON.stringify(r.body).slice(0, 500));
+      sendJSON(res, 502, { error: 'browse_media returned no usable data', raw: JSON.stringify(r.body).slice(0, 300) });
     } catch (e) {
       console.error('  ✗ /api/ha/media/browse error:', e.message);
       sendJSON(res, 502, { error: e.message });
@@ -1196,41 +1214,48 @@ code{background:#f4f1eb;padding:2px 7px;border-radius:4px;font-size:12px;}</styl
     return;
   }
 
-  // ── /api/ha/media/source  POST ────────────────────────────────────────────
-  if (pathname === '/api/ha/media/source' && method === 'POST') {
-    try {
-      const raw = await readBody(req);
-      const { entity, source } = JSON.parse(raw);
-      if (!entity || !source) { sendJSON(res, 400, { error: 'entity and source required' }); return; }
-      const r = await haRequest('POST', '/api/services/media_player/select_source', {
-        entity_id: entity, source,
-      });
-      if (r.status >= 400) { sendJSON(res, r.status, { error: `HA returned ${r.status}`, detail: r.body }); return; }
-      sendJSON(res, 200, { ok: true });
-    } catch (e) {
-      console.error('  ✗ /api/ha/media/source error:', e.message);
-      sendJSON(res, 502, { error: e.message });
-    }
-    return;
-  }
-
   // ── /api/ha/media/image  GET ──────────────────────────────────────────────
-  // Proxies album art (entity_picture is a relative HA path like /api/media_player_proxy/...)
+  // Proxies album art, following redirects. HA's media_player_proxy returns a 302
+  // to the actual CDN URL (e.g. Spotify CDN); without redirect-following the image
+  // would silently fail. Also handles absolute CDN URLs passed directly.
   if (pathname === '/api/ha/media/image' && method === 'GET') {
     try {
       const qs      = req.url.includes('?') ? req.url.slice(req.url.indexOf('?') + 1) : '';
       const imgPath = new URLSearchParams(qs).get('path');
       if (!imgPath) { res.writeHead(400); res.end(); return; }
-      const imgBuf = await new Promise((resolve, reject) => {
-        let base;
-        try { base = new URL(HA_URL); } catch(e) { return reject(e); }
-        const isHttps = base.protocol === 'https:';
-        const lib     = isHttps ? require('https') : require('http');
-        const port    = base.port ? parseInt(base.port, 10) : (isHttps ? 443 : 80);
-        const req2 = lib.request({
-          hostname: base.hostname, port, path: imgPath, method: 'GET',
-          headers: { 'Authorization': 'Bearer ' + HA_TOKEN, 'Accept': 'image/*' },
-        }, res2 => {
+
+      const fetchImg = (urlOrPath, redirectsLeft) => new Promise((resolve, reject) => {
+        let hostname, port, path, useAuth, lib;
+        if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {
+          try {
+            const u       = new URL(urlOrPath);
+            const isHttps = u.protocol === 'https:';
+            lib      = isHttps ? require('https') : require('http');
+            hostname = u.hostname;
+            port     = u.port ? parseInt(u.port, 10) : (isHttps ? 443 : 80);
+            path     = u.pathname + u.search;
+            useAuth  = false; // never send HA token to external CDN
+          } catch(e) { return reject(e); }
+        } else {
+          let base;
+          try { base = new URL(HA_URL); } catch(e) { return reject(e); }
+          const isHttps = base.protocol === 'https:';
+          lib      = isHttps ? require('https') : require('http');
+          hostname = base.hostname;
+          port     = base.port ? parseInt(base.port, 10) : (isHttps ? 443 : 80);
+          path     = urlOrPath;
+          useAuth  = true;
+        }
+        const headers = { 'Accept': 'image/*' };
+        if (useAuth) headers['Authorization'] = 'Bearer ' + HA_TOKEN;
+        const req2 = lib.request({ hostname, port, path, method: 'GET', headers }, res2 => {
+          const loc = res2.headers.location;
+          if ([301,302,303,307,308].includes(res2.statusCode) && loc && redirectsLeft > 0) {
+            res2.resume();
+            fetchImg(loc.startsWith('http') ? loc : new URL(loc, HA_URL).href, redirectsLeft - 1)
+              .then(resolve).catch(reject);
+            return;
+          }
           const chunks = [];
           res2.on('data', c => chunks.push(c));
           res2.on('end', () => resolve({ buf: Buffer.concat(chunks), ct: res2.headers['content-type'] || 'image/jpeg', status: res2.statusCode }));
@@ -1239,8 +1264,10 @@ code{background:#f4f1eb;padding:2px 7px;border-radius:4px;font-size:12px;}</styl
         req2.on('error', reject);
         req2.end();
       });
+
+      const imgBuf = await fetchImg(imgPath, 4);
       if (imgBuf.status !== 200) { res.writeHead(imgBuf.status); res.end(); return; }
-      res.writeHead(200, { 'Content-Type': imgBuf.ct, 'Content-Length': imgBuf.buf.length, 'Cache-Control': 'public, max-age=30' });
+      res.writeHead(200, { 'Content-Type': imgBuf.ct, 'Content-Length': imgBuf.buf.length, 'Cache-Control': 'public, max-age=60' });
       res.end(imgBuf.buf);
     } catch (e) {
       console.error('  ✗ /api/ha/media/image error:', e.message);

@@ -617,7 +617,6 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .mp-ctrl.pp { color: var(--gold); }
 .mp-vol { -webkit-appearance: none; appearance: none; width: 56px; height: 3px; background: var(--border); border-radius: 2px; outline: none; cursor: pointer; }
 .mp-vol::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%; background: var(--gold); cursor: pointer; }
-.mp-src-sel { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 10px; font-family: 'DM Sans', sans-serif; padding: 3px 6px; outline: none; cursor: pointer; min-width: 0; flex: 1; }
 .mp-browse { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; color: var(--muted); font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; padding: 3px 10px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all var(--ease); white-space: nowrap; flex-shrink: 0; }
 .mp-browse:hover { border-color: var(--gold-mid); color: var(--text); }
 /* ── PHOTO FRAME ── */
@@ -3511,18 +3510,25 @@ function calRangeForMonth(date) {
 // ═══════════════════════════════════════════════════════════
 //  MEDIA PLAYER
 // ═══════════════════════════════════════════════════════════
-let mediaState          = null;
-let mediaActiveEntity   = null; // the entity currently being controlled (may differ from primary)
-let mediaPrimarySources = [];   // Spotify Connect device list — always from the primary entity
-let mediaPrimarySource  = null; // currently selected source on the primary entity
-let mediaPollTimer      = null;
-let mediaPosTimer       = null;
-let mediaVolDebounce    = null;
-let mediaBrowserPath    = [];
+let mediaState       = null;
+let mediaPollTimer   = null;
+let mediaPosTimer    = null;
+let mediaVolDebounce = null;
+let mediaBrowserPath = [];
+
+function _mediaEntity() { return D?.settings?.mediaEntity?.trim() || ''; }
+
+// Always proxy artwork through our server.
+// MA serves images from its own proxy (http://10.x.x.x:8095/imageproxy?...)
+// which the browser can't load directly due to cross-origin restrictions.
+function _artUrl(raw) {
+  if (!raw) return null;
+  return `/api/ha/media/image?path=${encodeURIComponent(raw)}`;
+}
 
 function initMedia() {
   const enabled = D?.settings?.mediaEnabled;
-  const entity  = D?.settings?.mediaEntity?.trim();
+  const entity  = _mediaEntity();
   const card    = document.getElementById('media-card');
   if (!card) return;
   if (!enabled || !entity) {
@@ -3532,32 +3538,17 @@ function initMedia() {
     return;
   }
   card.style.display = 'block';
-  if (!mediaActiveEntity) mediaActiveEntity = entity; // keep selection across data refreshes
   pollMedia();
   if (!mediaPollTimer) mediaPollTimer = setInterval(pollMedia, 5000);
 }
 
 async function pollMedia() {
-  const primaryEntity = D?.settings?.mediaEntity?.trim();
-  const activeEntity  = mediaActiveEntity || primaryEntity;
-  if (!activeEntity) return;
+  const entity = _mediaEntity();
+  if (!entity) return;
   try {
-    const r = await fetch(`/api/ha/media/state?entity=${encodeURIComponent(activeEntity)}`);
+    const r = await fetch(`/api/ha/media/state?entity=${encodeURIComponent(entity)}`);
     if (!r.ok) return;
     mediaState = await r.json();
-
-    if (activeEntity === primaryEntity) {
-      // Active IS primary — update sources from this response
-      mediaPrimarySources = mediaState.sources || [];
-      mediaPrimarySource  = mediaState.source  || null;
-    } else {
-      // Active is a speaker — silently refresh primary sources in the background
-      fetch(`/api/ha/media/state?entity=${encodeURIComponent(primaryEntity)}`)
-        .then(r => r.ok ? r.json() : null)
-        .then(d => { if (d) { mediaPrimarySources = d.sources || []; mediaPrimarySource = d.source || null; } })
-        .catch(() => {});
-    }
-
     renderMedia(mediaState);
   } catch {}
 }
@@ -3569,21 +3560,22 @@ function renderMedia(s) {
   const playing = s.state === 'playing';
   const active  = playing || s.state === 'paused';
 
-  // Album art
-  const artSrc = s.albumArt ? `/api/ha/media/image?path=${encodeURIComponent(s.albumArt)}` : null;
+  // Album art -- handle both absolute URLs (MA/Spotify CDN) and relative HA proxy paths
+  const artSrc  = _artUrl(s.albumArt);
   const artHtml = artSrc
     ? `<img src="${artSrc}" class="mp-art" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
        <div class="mp-art-ph" style="display:none">🎵</div>`
     : `<div class="mp-art-ph">🎵</div>`;
 
   // Track info
+  const subtitle = [s.artist, s.album].filter(Boolean).join(' · ');
   const trackHtml = active
-    ? `<div class="mp-track">${_esc(s.title || 'Unknown track')}</div>
-       <div class="mp-artist">${_esc([s.artist, s.album].filter(Boolean).join(' · '))}</div>`
-    : `<div class="mp-track" style="color:var(--muted)">${s.state === 'unavailable' ? 'Unavailable' : s.state === 'off' ? 'Off' : 'Not playing'}</div>
+    ? `<div class="mp-track">${_esc(s.title || 'Unknown')}</div>
+       <div class="mp-artist">${_esc(subtitle)}</div>`
+    : `<div class="mp-track" style="color:var(--muted)">${s.state === 'unavailable' ? 'Unavailable' : 'Not playing'}</div>
        <div class="mp-artist"></div>`;
 
-  // Progress bar (display only, click to seek)
+  // Progress bar
   const pct = (s.duration > 0 && s.position > 0) ? Math.min(100, (s.position / s.duration) * 100) : 0;
   const progressHtml = active
     ? `<div class="mp-progress" onclick="mpSeekClick(event,this,${s.duration})">
@@ -3591,55 +3583,10 @@ function renderMedia(s) {
        </div>`
     : '';
 
-  // Controls
+  // Play/pause icon
   const ppIcon = playing
     ? `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>`
     : `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>`;
-
-  const ctrlsHtml = `
-    <div style="display:flex;align-items:center;gap:4px;margin-top:4px;">
-      <button class="mp-ctrl" onclick="mediaCtrl('prev')" title="Previous">
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
-      </button>
-      <button class="mp-ctrl pp" onclick="mediaCtrl('play_pause')" title="${playing ? 'Pause' : 'Play'}">${ppIcon}</button>
-      <button class="mp-ctrl" onclick="mediaCtrl('next')" title="Next">
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm8.5-6v6h2V6h-2z"/></svg>
-      </button>
-      <div style="flex:1"></div>
-      <svg viewBox="0 0 24 24" width="13" height="13" style="color:var(--muted);flex-shrink:0;margin-right:2px" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
-      <input type="range" class="mp-vol" min="0" max="100" value="${s.volume ?? 50}"
-        oninput="mediaSetVol(this.value)" onchange="mediaSetVol(this.value)" title="Volume">
-    </div>`;
-
-  // Source / speaker selector
-  // Always use the cached primary entity sources so Devices list survives speaker switches
-  const speakers      = D?.settings?.mediaSpeakers || [];
-  const primaryEnt    = D?.settings?.mediaEntity?.trim();
-  const activeSpeaker = mediaActiveEntity && mediaActiveEntity !== primaryEnt
-    ? mediaActiveEntity : null;
-  let optsHtml = '';
-  if (mediaPrimarySources.length) {
-    optsHtml += `<optgroup label="Devices">${mediaPrimarySources.map(src =>
-      `<option value="src:${_esc(src)}" ${!activeSpeaker && mediaPrimarySource === src ? 'selected' : ''}>${_esc(src)}</option>`
-    ).join('')}</optgroup>`;
-  }
-  if (speakers.length) {
-    optsHtml += `<optgroup label="Speakers">${speakers.map(sp =>
-      `<option value="ent:${_esc(sp.entity)}" ${activeSpeaker === sp.entity ? 'selected' : ''}>${_esc(sp.label || sp.entity)}</option>`
-    ).join('')}</optgroup>`;
-  }
-  const srcHtml = optsHtml
-    ? `<select class="mp-src-sel" onchange="mediaSwitchSrc(this.value)">${optsHtml}</select>`
-    : '';
-
-  const mediaType = D?.settings?.mediaType || 'spotify';
-  const browseBtn = mediaType !== 'generic'
-    ? `<button class="mp-browse" onclick="openMediaBrowser()">Browse</button>`
-    : '';
-
-  const bottomHtml = (srcHtml || browseBtn)
-    ? `<div style="display:flex;gap:6px;align-items:center;margin-top:7px;">${srcHtml}${browseBtn}</div>`
-    : '';
 
   body.innerHTML = `
     <div style="display:flex;gap:10px;align-items:flex-start;">
@@ -3647,10 +3594,22 @@ function renderMedia(s) {
       <div style="flex:1;min-width:0;">
         ${trackHtml}
         ${progressHtml}
-        ${ctrlsHtml}
+        <div style="display:flex;align-items:center;gap:4px;margin-top:4px;">
+          <button class="mp-ctrl" onclick="mediaCtrl('prev')" title="Previous">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+          </button>
+          <button class="mp-ctrl pp" onclick="mediaCtrl('play_pause')">${ppIcon}</button>
+          <button class="mp-ctrl" onclick="mediaCtrl('next')" title="Next">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm8.5-6v6h2V6h-2z"/></svg>
+          </button>
+          <div style="flex:1"></div>
+          <svg viewBox="0 0 24 24" width="13" height="13" style="color:var(--muted);flex-shrink:0;margin-right:2px" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+          <input type="range" class="mp-vol" min="0" max="100" value="${s.volume ?? 50}"
+            oninput="mediaSetVol(this.value)" onchange="mediaSetVol(this.value)" title="Volume">
+        </div>
       </div>
     </div>
-    ${bottomHtml}`;
+    <div style="margin-top:8px;"><button class="mp-browse" onclick="openMediaBrowser()" style="width:100%;">Browse Music</button></div>`;
 
   if (playing) _mpStartPosTick(s.position, s.duration, s.positionUpdated);
   else _mpStopPosTick();
@@ -3663,9 +3622,8 @@ function _mpStartPosTick(pos, dur, updatedAt) {
   const serverAt  = updatedAt ? new Date(updatedAt).getTime() : Date.now();
   mediaPosTimer = setInterval(() => {
     const elapsed = (Date.now() - serverAt) / 1000;
-    const current = Math.min(dur, serverPos + elapsed);
     const fill = document.getElementById('mp-pfill');
-    if (fill) fill.style.width = Math.min(100, (current / dur) * 100) + '%';
+    if (fill) fill.style.width = Math.min(100, ((serverPos + elapsed) / dur) * 100) + '%';
   }, 500);
 }
 function _mpStopPosTick() {
@@ -3673,21 +3631,18 @@ function _mpStopPosTick() {
 }
 
 function mpSeekClick(e, el, duration) {
-  if (!duration) return;
+  const entity = _mediaEntity();
+  if (!entity || !duration) return;
   const rect = el.getBoundingClientRect();
-  const pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-  const pos  = Math.round(pct * duration);
-  const entity = mediaActiveEntity || D?.settings?.mediaEntity?.trim();
-  if (!entity) return;
+  const pos  = Math.round(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * duration);
   fetch('/api/ha/media/control', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ entity, action: 'seek', seek_position: pos }),
   }).then(() => setTimeout(pollMedia, 600)).catch(() => {});
 }
 
 async function mediaCtrl(action) {
-  const entity = mediaActiveEntity || D?.settings?.mediaEntity?.trim();
+  const entity = _mediaEntity();
   if (!entity) return;
   try {
     await fetch('/api/ha/media/control', {
@@ -3701,7 +3656,7 @@ async function mediaCtrl(action) {
 function mediaSetVol(v) {
   clearTimeout(mediaVolDebounce);
   mediaVolDebounce = setTimeout(async () => {
-    const entity = mediaActiveEntity || D?.settings?.mediaEntity?.trim();
+    const entity = _mediaEntity();
     if (!entity) return;
     try {
       await fetch('/api/ha/media/control', {
@@ -3710,37 +3665,6 @@ function mediaSetVol(v) {
       });
     } catch {}
   }, 150);
-}
-
-async function mediaSwitchSrc(value) {
-  const primaryEntity = D?.settings?.mediaEntity?.trim();
-  if (!primaryEntity) return;
-
-  if (value.startsWith('src:')) {
-    // Spotify Connect device — switch source on the primary entity and track it
-    const source = value.slice(4);
-    mediaActiveEntity = primaryEntity;
-    try {
-      await fetch('/api/ha/media/source', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entity: primaryEntity, source }),
-      });
-      setTimeout(pollMedia, 800);
-    } catch {}
-  } else if (value.startsWith('ent:')) {
-    // Additional HA speaker entity — switch active tracking to it and transfer playback
-    const target = value.slice(4);
-    mediaActiveEntity = target;
-    if (mediaState?.mediaContentId && mediaState?.mediaContentType) {
-      try {
-        await fetch('/api/ha/media/play', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ entity: target, media_content_id: mediaState.mediaContentId, media_content_type: mediaState.mediaContentType }),
-        });
-      } catch {}
-    }
-    setTimeout(pollMedia, 800);
-  }
 }
 
 // ── Media Browser ─────────────────────────────────────────
@@ -3757,61 +3681,84 @@ function closeMediaBrowser() {
 }
 
 async function _loadBrowser(type, id, title) {
-  const entity = mediaActiveEntity || D?.settings?.mediaEntity?.trim();
+  const entity = _mediaEntity();
   if (!entity) return;
   document.getElementById('media-browser-title').textContent = title || 'Browse';
-  const list = document.getElementById('media-browser-list');
-  list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:12px;">Loading…</div>';
+  const list  = document.getElementById('media-browser-list');
   const crumb = document.getElementById('media-browser-crumb');
+  list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:12px;">Loading…</div>';
+
   if (mediaBrowserPath.length) {
     crumb.style.display = 'block';
-    crumb.innerHTML = mediaBrowserPath.map((p, i) =>
-      `<span style="cursor:pointer;color:var(--muted)" onclick="_browserGoBack(${i})">${_esc(p.title)}</span>`
-    ).join(' › ') + (mediaBrowserPath.length ? ' › ' : '');
+    crumb.innerHTML = '<span style="cursor:pointer;color:var(--gold)" onclick="_browserGoBack(-1)">← Back</span>'
+      + '  ' + mediaBrowserPath.map(p => _esc(p.title)).join(' › ');
   } else {
     crumb.style.display = 'none';
   }
+
   try {
     let url = `/api/ha/media/browse?entity=${encodeURIComponent(entity)}`;
     if (type) url += `&type=${encodeURIComponent(type)}`;
     if (id)   url += `&id=${encodeURIComponent(id)}`;
     const r = await fetch(url);
-    if (!r.ok) { list.innerHTML = `<div style="text-align:center;color:var(--err);padding:20px;font-size:12px;">Error ${r.status}</div>`; return; }
-    const data = await r.json();
-    _renderBrowserItems(data.children || [], type, id, title);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      list.innerHTML = `<div style="padding:16px;color:var(--err);font-size:12px;">
+        <strong>Browse failed (${r.status})</strong><br>
+        ${_esc(data.error || '')}<br>
+        <code style="font-size:9px;color:var(--muted);word-break:break-all">${_esc(data.raw || '')}</code>
+      </div>`;
+      return;
+    }
+    if (!data.children?.length && !data.title) {
+      list.innerHTML = `<div style="padding:16px;color:var(--muted);font-size:12px;">No content returned.<br><code style="font-size:9px;word-break:break-all">${_esc(JSON.stringify(data).slice(0,200))}</code></div>`;
+      return;
+    }
+    _renderBrowserItems(data.children || []);
   } catch (e) {
     list.innerHTML = `<div style="text-align:center;color:var(--err);padding:20px;font-size:12px;">${_esc(e.message)}</div>`;
   }
 }
 
-function _renderBrowserItems(items, parentType, parentId, parentTitle) {
+function _renderBrowserItems(items) {
   const list = document.getElementById('media-browser-list');
-  if (!items.length) {
+  // Filter out generic HA media sources (type "app") -- only show music content
+  const filtered = items.filter(item => {
+    const t = (item.media_content_type || '').toLowerCase();
+    return t !== 'app' && t !== 'url' && t !== 'image' && t !== 'channel';
+  });
+  if (!filtered.length) {
     list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:12px;">No items found.</div>';
     return;
   }
-  list.innerHTML = items.map(item => {
-    const thumb = item.thumbnail
-      ? `<img src="${_esc(item.thumbnail)}" style="width:38px;height:38px;border-radius:5px;object-fit:cover;flex-shrink:0" onerror="this.style.opacity='.2'">`
-      : `<div style="width:38px;height:38px;border-radius:5px;background:var(--surface2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;">🎵</div>`;
-    const safeId   = _esc(item.media_content_id   || '');
-    const safeType = _esc(item.media_content_type  || '');
+  list.innerHTML = filtered.map(item => {
+    // Thumbnails from MA are absolute CDN URLs -- use them directly
+    const thumbSrc = item.thumbnail ? _artUrl(item.thumbnail) : null;
+    const thumb = thumbSrc
+      ? `<img src="${thumbSrc}" style="width:40px;height:40px;border-radius:5px;object-fit:cover;flex-shrink:0" onerror="this.style.opacity='.2'">`
+      : `<div style="width:40px;height:40px;border-radius:5px;background:var(--surface2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;">🎵</div>`;
+
+    const safeId    = _esc(item.media_content_id  || '');
+    const safeType  = _esc(item.media_content_type || '');
     const safeTitle = _esc(item.title || 'Untitled');
+
     const playBtn = item.can_play
-      ? `<button data-id="${safeId}" data-type="${safeType}" onclick="_browserPlay(this)"
-           style="background:var(--gold);border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#0f0f0e;transition:opacity .15s;" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'" title="Play">
-           <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+      ? `<button data-id="${safeId}" data-type="${safeType}" onclick="event.stopPropagation();_browserPlay(this)"
+           style="background:var(--gold);border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#0f0f0e;transition:opacity .15s;" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'" title="Play">
+           <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
          </button>`
       : '';
+
     const expandAttr = item.can_expand
-      ? `data-expand-id="${safeId}" data-expand-type="${safeType}" data-expand-title="${safeTitle}" onclick="_browserExpand(this)" style="cursor:pointer"`
-      : `style="cursor:default"`;
-    return `<div style="display:flex;align-items:center;gap:9px;padding:7px 6px;border-radius:8px;transition:background .12s" ${expandAttr}
+      ? `data-expand-id="${safeId}" data-expand-type="${safeType}" data-expand-title="${safeTitle}" onclick="_browserExpand(this)"`
+      : '';
+
+    return `<div style="display:flex;align-items:center;gap:10px;padding:7px 6px;border-radius:8px;transition:background .12s;cursor:${item.can_expand ? 'pointer' : 'default'}" ${expandAttr}
         onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
         ${thumb}
         <div style="flex:1;min-width:0;">
           <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${safeTitle}</div>
-          ${item.media_content_type ? `<div style="font-size:10px;color:var(--muted)">${_esc(item.media_content_type)}</div>` : ''}
+          ${item.media_content_type && item.media_content_type.toLowerCase() !== 'music_assistant' ? `<div style="font-size:10px;color:var(--muted);text-transform:capitalize">${_esc(item.media_content_type.split('.').pop())}</div>` : ''}
         </div>
         ${playBtn}
       </div>`;
@@ -3819,28 +3766,25 @@ function _renderBrowserItems(items, parentType, parentId, parentTitle) {
 }
 
 function _browserExpand(el) {
-  const id    = el.dataset.expandId;
-  const type  = el.dataset.expandType;
-  const title = el.dataset.expandTitle;
+  const id = el.dataset.expandId, type = el.dataset.expandType, title = el.dataset.expandTitle;
   mediaBrowserPath.push({ type, id, title });
   _loadBrowser(type, id, title);
 }
 
 function _browserGoBack(idx) {
+  if (idx < 0) idx = mediaBrowserPath.length - 1;
   mediaBrowserPath = mediaBrowserPath.slice(0, idx);
   const prev = mediaBrowserPath[mediaBrowserPath.length - 1];
   _loadBrowser(prev?.type || null, prev?.id || null, prev?.title || 'Browse');
 }
 
 async function _browserPlay(btn) {
-  const entity = mediaActiveEntity || D?.settings?.mediaEntity?.trim();
+  const entity = _mediaEntity();
   if (!entity) return;
-  const contentId   = btn.dataset.id;
-  const contentType = btn.dataset.type;
   try {
     const r = await fetch('/api/ha/media/play', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entity, media_content_id: contentId, media_content_type: contentType }),
+      body: JSON.stringify({ entity, media_content_id: btn.dataset.id, media_content_type: btn.dataset.type }),
     });
     if (r.ok) { closeMediaBrowser(); setTimeout(pollMedia, 1200); }
   } catch {}

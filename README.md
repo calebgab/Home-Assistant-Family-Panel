@@ -1,6 +1,6 @@
 # <img src="docs/apple-touch-icon.png" width="32" height="32" align="absmiddle" alt="Family Panel icon"> Family Panel
 
-A self-hosted family dashboard built on top of [Home Assistant](https://www.home-assistant.io/). Designed for a wall-mounted tablet, it brings together a shared calendar, chore tracking, shopping list, presence detection, smart home controls, sensors, a photo frame, and push notifications - all in a single always-on screen with a full admin UI.
+A self-hosted family dashboard built on top of [Home Assistant](https://www.home-assistant.io/). Designed for a wall-mounted tablet, it brings together a shared calendar, chore tracking, shopping list, presence detection, smart home controls, sensors, a photo frame, a music player, and push notifications - all in a single always-on screen with a full admin UI.
 
 ![Dashboard overview](docs/screenshots/dashboard-overview.png)
 
@@ -82,6 +82,15 @@ A self-hosted family dashboard built on top of [Home Assistant](https://www.home
 - Falls back to **Open-Meteo** if no HA entity is configured
 - 5-day forecast with icons and temperature range
 
+### 🎵 Media Player
+- Persistent **Now Playing widget** in the dashboard sidebar
+- Shows album art, track title, and artist
+- **Playback controls** - previous, play/pause, next
+- **Volume slider**
+- **Progress bar** with click-to-seek
+- **Browse Music** overlay - navigate your full music library and tap any playlist, album, or track to play it instantly
+- Powered by a Home Assistant `media_player` entity - works with [Music Assistant](#music-assistant-setup) for full Spotify integration on ESPHome and other speakers
+
 ### 🖼️ Photo Frame
 - Pulls albums from **Immich** (self-hosted photo library)
 - Pan-and-zoom effect between photos
@@ -126,6 +135,7 @@ A self-hosted family dashboard built on top of [Home Assistant](https://www.home
 | **Node.js 18+** | Zero npm dependencies - uses only built-in Node modules |
 | **Home Assistant** | Any recent version (2023+) |
 | **MS365-Calendar** (HACS) | For Microsoft 365 / Outlook calendar sync |
+| **Music Assistant** (HACS) | Required to enable the Media Player feature |
 | A browser on the same network | Designed for a wall-mounted tablet |
 
 ### MS365-Calendar HACS Integration
@@ -346,6 +356,13 @@ Visit **http://your-server:8080/admin** to configure everything.
 | Photo interval (seconds) | 20 |
 | Tap zones | On |
 
+### Media Player
+
+| Setting | Description |
+|---|---|
+| Enable | Show/hide the Now Playing widget on the dashboard |
+| Media Player Entity | HA `media_player.*` entity to control (select from dropdown) |
+
 ---
 
 ## Push Notifications Setup
@@ -385,6 +402,22 @@ Family Panel will then read the real client IP from the `X-Real-IP` header forwa
 
 ---
 
+## Music Assistant Setup
+
+[Music Assistant](https://music-assistant.io/) is the recommended way to get full Spotify (and other streaming service) support on ESPHome speakers and other HA media players that don't natively support Spotify Connect.
+
+1. Install [HACS](https://hacs.xyz/) if you haven't already.
+2. In HACS → Integrations, search for **Music Assistant** and install it.
+3. Restart Home Assistant, then go to **Settings → Devices & Services → Add Integration → Music Assistant**.
+4. In the Music Assistant UI, add **Spotify** (or another streaming provider) under **Settings → Providers**.
+5. Add your speaker under **Settings → Players** - select your ESPHome or other HA media player.
+6. Music Assistant will create a `media_player.*` entity in HA for each configured player.
+7. In **Family Panel Admin → Media Player**, enable the widget and select that entity from the dropdown.
+
+The dashboard will then show album art, track info, and a Browse Music button that lets you navigate your full Spotify library and play any playlist or album directly to your speaker.
+
+---
+
 ## Alarm Panel Setup
 
 1. In **Admin → HA Entities → Sensors**, add a sensor with type **Alarm panel**.
@@ -413,6 +446,7 @@ Family Panel will then read the real client IP from the `X-Real-IP` header forwa
 - **Calendar:** Home Assistant REST API + MS365-Calendar HACS integration
 - **Weather:** HA `weather.*` entity or Open-Meteo API
 - **Photos:** Immich REST API
+- **Music:** Home Assistant media_player API + Music Assistant
 
 ---
 
@@ -420,6 +454,7 @@ Family Panel will then read the real client IP from the `X-Real-IP` header forwa
 
 - [RogerSelwyn/MS365-Calendar](https://github.com/RogerSelwyn/MS365-Calendar)
 - [Home Assistant](https://www.home-assistant.io/)
+- [Music Assistant](https://music-assistant.io/)
 - [Immich](https://immich.app/)
 - [Open-Meteo](https://open-meteo.com/)
 

@@ -3936,28 +3936,24 @@ async function enterPhotoFrame() {
 
 function pfHandleTap(e) {
   if (!pfActive) return;
-  // Don't handle taps on the info button or panel
   if (e.target.closest('#pf-info-btn, #pf-info-panel')) return;
-  // Close info panel on any zone tap
   pfInfoClose();
   const tapZones = D?.settings?.frameTapZones !== false;
-  if (!tapZones) { exitPhotoFrame(); return; }
+  if (!tapZones) { e.preventDefault(); exitPhotoFrame(); return; }
 
-  // Use clientX from click or changedTouches for touchend
   const x = e.clientX ?? e.changedTouches?.[0]?.clientX;
-  if (x == null) { exitPhotoFrame(); return; }
-  const w    = window.innerWidth;
-  const zone = x / w; // 0–1
+  if (x == null) { e.preventDefault(); exitPhotoFrame(); return; }
+  const zone = x / window.innerWidth;
 
   if (zone < 0.25) {
-    // Left quarter — previous photo
     pfGoPrev();
   } else if (zone > 0.75) {
-    // Right quarter — next photo
     clearTimeout(pfSlideTimer);
     pfAdvance();
   } else {
-    // Middle half — exit
+    // Prevent the browser's synthetic click (fired ~300ms after touchend)
+    // from bleeding through to the calendar underneath
+    e.preventDefault();
     exitPhotoFrame();
   }
 }
@@ -3974,6 +3970,10 @@ function exitPhotoFrame() {
   pfEl().removeEventListener('click', pfHandleTap);
   pfEl().removeEventListener('touchend', pfHandleTap);
   resetIdleTimer();
+  // Belt-and-suspenders: briefly block pointer events on the app so any
+  // synthetic click that slips past preventDefault() can't hit the calendar
+  const app = document.getElementById('app');
+  if (app) { app.style.pointerEvents = 'none'; setTimeout(() => { app.style.pointerEvents = ''; }, 400); }
 }
 
 // ── Photo info panel ─────────────────────────────────────

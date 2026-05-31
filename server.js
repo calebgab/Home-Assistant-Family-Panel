@@ -1059,6 +1059,28 @@ code{background:#f4f1eb;padding:2px 7px;border-radius:4px;font-size:12px;}</styl
     return;
   }
 
+  // ── /api/ha/entities  GET ────────────────────────────────────────────────
+  // Returns { entity_id, friendly_name } for all entities, optionally filtered by domain.
+  // e.g. /api/ha/entities?domain=media_player
+  if (pathname === '/api/ha/entities' && method === 'GET') {
+    try {
+      const qs     = req.url.includes('?') ? req.url.slice(req.url.indexOf('?') + 1) : '';
+      const domain = new URLSearchParams(qs).get('domain') || '';
+      const r = await haRequest('GET', '/api/states');
+      if (r.status >= 400) { sendJSON(res, r.status, { error: `HA returned ${r.status}` }); return; }
+      const all = Array.isArray(r.body) ? r.body : [];
+      const filtered = domain ? all.filter(s => s.entity_id.startsWith(domain + '.')) : all;
+      sendJSON(res, 200, filtered.map(s => ({
+        entity_id:     s.entity_id,
+        friendly_name: s.attributes?.friendly_name || s.entity_id,
+      })).sort((a, b) => a.entity_id.localeCompare(b.entity_id)));
+    } catch (e) {
+      console.error('  ✗ /api/ha/entities error:', e.message);
+      sendJSON(res, 502, { error: e.message });
+    }
+    return;
+  }
+
   // ── /api/ha/media/state  GET ─────────────────────────────────────────────
   if (pathname === '/api/ha/media/state' && method === 'GET') {
     try {

@@ -1218,10 +1218,13 @@ proxy_set_header X-Forwarded-Proto $scheme;</pre>
         <div class="setting-row">
           <div class="setting-info">
             <div class="setting-name">Media Player Entity</div>
-            <div class="setting-desc">Primary HA media_player entity — e.g. <code style="font-size:10px;background:var(--surface2);padding:1px 5px;border-radius:3px;">media_player.spotify_caleb</code></div>
+            <div class="setting-desc">Primary HA media_player entity to control.</div>
           </div>
-          <div class="setting-control" style="min-width:230px;">
-            <input type="text" id="cfg-media-entity" placeholder="media_player.spotify_caleb" style="width:100%;">
+          <div class="setting-control" style="min-width:230px;display:flex;gap:8px;align-items:center;">
+            <select id="cfg-media-entity" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r8);color:var(--text);font-size:12px;padding:5px 10px;cursor:pointer;outline:none;">
+              <option value="">— click Reload to fetch —</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" id="load-media-entities-btn" onclick="loadMediaEntities()">Reload</button>
           </div>
         </div>
         <div class="setting-row">
@@ -1244,8 +1247,10 @@ proxy_set_header X-Forwarded-Proto $scheme;</pre>
           </div>
           <div id="media-speakers-list" style="width:100%;margin-bottom:6px;"></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-            <input type="text" id="new-speaker-entity" placeholder="media_player.living_room" style="flex:1;min-width:160px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r8);color:var(--text);font-size:12px;padding:5px 10px;outline:none;">
-            <input type="text" id="new-speaker-label" placeholder="Living Room" style="width:120px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r8);color:var(--text);font-size:12px;padding:5px 10px;outline:none;">
+            <select id="new-speaker-entity" style="flex:1;min-width:160px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r8);color:var(--text);font-size:12px;padding:5px 8px;outline:none;cursor:pointer;">
+              <option value="">— select entity —</option>
+            </select>
+            <input type="text" id="new-speaker-label" placeholder="Label (optional)" style="width:130px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r8);color:var(--text);font-size:12px;padding:5px 10px;outline:none;">
             <button class="btn btn-secondary btn-sm" onclick="addMediaSpeaker()">Add</button>
           </div>
         </div>
@@ -2826,9 +2831,51 @@ function renderMediaSettings() {
   const enabled = !!s.mediaEnabled;
   document.getElementById('cfg-media-enabled').checked = enabled;
   document.getElementById('cfg-media-enabled-label').textContent = enabled ? 'Enabled' : 'Disabled';
-  document.getElementById('cfg-media-entity').value = s.mediaEntity || '';
-  document.getElementById('cfg-media-type').value   = s.mediaType   || 'spotify';
+  document.getElementById('cfg-media-type').value = s.mediaType || 'spotify';
   renderMediaSpeakersList();
+  loadMediaEntities();
+}
+
+let _mediaEntities = null;
+
+async function loadMediaEntities() {
+  const btn = document.getElementById('load-media-entities-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    const r = await fetch('/api/ha/entities?domain=media_player');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    _mediaEntities = await r.json();
+    _populateMediaEntitySelects();
+  } catch (e) {
+    toast('Could not load entities: ' + e.message, 'err');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Reload'; }
+  }
+}
+
+function _populateMediaEntitySelects() {
+  const entities = _mediaEntities || [];
+  const currentPrimary = (D.settings || {}).mediaEntity || '';
+  const existingSpeakers = new Set(((D.settings || {}).mediaSpeakers || []).map(s => s.entity));
+
+  // Primary entity select
+  const primarySel = document.getElementById('cfg-media-entity');
+  if (primarySel) {
+    primarySel.innerHTML = '<option value="">— select entity —</option>'
+      + entities.map(e =>
+          `<option value="${e.entity_id}" ${e.entity_id === currentPrimary ? 'selected' : ''}>${e.friendly_name} (${e.entity_id})</option>`
+        ).join('');
+  }
+
+  // Add-speaker select — exclude already-added entities
+  const speakerSel = document.getElementById('new-speaker-entity');
+  if (speakerSel) {
+    speakerSel.innerHTML = '<option value="">— select entity —</option>'
+      + entities
+          .filter(e => !existingSpeakers.has(e.entity_id))
+          .map(e => `<option value="${e.entity_id}">${e.friendly_name} (${e.entity_id})</option>`)
+          .join('');
+  }
 }
 
 function renderMediaSpeakersList() {
@@ -2849,21 +2896,30 @@ function renderMediaSpeakersList() {
 }
 
 function addMediaSpeaker() {
-  const entity = document.getElementById('new-speaker-entity').value.trim();
-  const label  = document.getElementById('new-speaker-label').value.trim();
-  if (!entity) { toast('Entity ID is required', 'err'); return; }
+  const sel    = document.getElementById('new-speaker-entity');
+  const entity = sel.value;
+  const labelInput = document.getElementById('new-speaker-label');
+  let   label  = labelInput.value.trim();
+  if (!entity) { toast('Select an entity first', 'err'); return; }
   D.settings = D.settings || {};
   D.settings.mediaSpeakers = D.settings.mediaSpeakers || [];
   if (D.settings.mediaSpeakers.some(s => s.entity === entity)) { toast('Already in list', 'err'); return; }
+  // Auto-fill label from friendly_name if user left it blank
+  if (!label && _mediaEntities) {
+    const found = _mediaEntities.find(e => e.entity_id === entity);
+    if (found) label = found.friendly_name;
+  }
   D.settings.mediaSpeakers.push({ entity, label: label || entity });
-  document.getElementById('new-speaker-entity').value = '';
-  document.getElementById('new-speaker-label').value  = '';
+  sel.value = '';
+  labelInput.value = '';
   renderMediaSpeakersList();
+  _populateMediaEntitySelects();
 }
 
 function removeMediaSpeaker(i) {
   D.settings.mediaSpeakers = (D.settings.mediaSpeakers || []).filter((_, idx) => idx !== i);
   renderMediaSpeakersList();
+  _populateMediaEntitySelects();
 }
 
 async function saveMediaSettings() {

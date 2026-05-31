@@ -3511,11 +3511,14 @@ function calRangeForMonth(date) {
 // ═══════════════════════════════════════════════════════════
 //  MEDIA PLAYER
 // ═══════════════════════════════════════════════════════════
-let mediaState       = null;
-let mediaPollTimer   = null;
-let mediaPosTimer    = null;
-let mediaVolDebounce = null;
-let mediaBrowserPath = []; // navigation breadcrumb stack
+let mediaState          = null;
+let mediaActiveEntity   = null; // the entity currently being controlled (may differ from primary)
+let mediaPrimarySources = [];   // Spotify Connect device list — always from the primary entity
+let mediaPrimarySource  = null; // currently selected source on the primary entity
+let mediaPollTimer      = null;
+let mediaPosTimer       = null;
+let mediaVolDebounce    = null;
+let mediaBrowserPath    = [];
 
 function initMedia() {
   const enabled = D?.settings?.mediaEnabled;
@@ -3528,18 +3531,33 @@ function initMedia() {
     clearInterval(mediaPosTimer);  mediaPosTimer  = null;
     return;
   }
-  card.style.display = '';
+  card.style.display = 'block';
+  if (!mediaActiveEntity) mediaActiveEntity = entity; // keep selection across data refreshes
   pollMedia();
   if (!mediaPollTimer) mediaPollTimer = setInterval(pollMedia, 5000);
 }
 
 async function pollMedia() {
-  const entity = D?.settings?.mediaEntity?.trim();
-  if (!entity) return;
+  const primaryEntity = D?.settings?.mediaEntity?.trim();
+  const activeEntity  = mediaActiveEntity || primaryEntity;
+  if (!activeEntity) return;
   try {
-    const r = await fetch(`/api/ha/media/state?entity=${encodeURIComponent(entity)}`);
+    const r = await fetch(`/api/ha/media/state?entity=${encodeURIComponent(activeEntity)}`);
     if (!r.ok) return;
     mediaState = await r.json();
+
+    if (activeEntity === primaryEntity) {
+      // Active IS primary — update sources from this response
+      mediaPrimarySources = mediaState.sources || [];
+      mediaPrimarySource  = mediaState.source  || null;
+    } else {
+      // Active is a speaker — silently refresh primary sources in the background
+      fetch(`/api/ha/media/state?entity=${encodeURIComponent(primaryEntity)}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) { mediaPrimarySources = d.sources || []; mediaPrimarySource = d.source || null; } })
+        .catch(() => {});
+    }
+
     renderMedia(mediaState);
   } catch {}
 }
@@ -3594,17 +3612,20 @@ function renderMedia(s) {
     </div>`;
 
   // Source / speaker selector
-  const speakers = D?.settings?.mediaSpeakers || [];
-  const sources  = s.sources || [];
+  // Always use the cached primary entity sources so Devices list survives speaker switches
+  const speakers      = D?.settings?.mediaSpeakers || [];
+  const primaryEnt    = D?.settings?.mediaEntity?.trim();
+  const activeSpeaker = mediaActiveEntity && mediaActiveEntity !== primaryEnt
+    ? mediaActiveEntity : null;
   let optsHtml = '';
-  if (sources.length) {
-    optsHtml += `<optgroup label="Devices">${sources.map(src =>
-      `<option value="src:${_esc(src)}" ${s.source === src ? 'selected' : ''}>${_esc(src)}</option>`
+  if (mediaPrimarySources.length) {
+    optsHtml += `<optgroup label="Devices">${mediaPrimarySources.map(src =>
+      `<option value="src:${_esc(src)}" ${!activeSpeaker && mediaPrimarySource === src ? 'selected' : ''}>${_esc(src)}</option>`
     ).join('')}</optgroup>`;
   }
   if (speakers.length) {
     optsHtml += `<optgroup label="Speakers">${speakers.map(sp =>
-      `<option value="ent:${_esc(sp.entity)}">${_esc(sp.label || sp.entity)}</option>`
+      `<option value="ent:${_esc(sp.entity)}" ${activeSpeaker === sp.entity ? 'selected' : ''}>${_esc(sp.label || sp.entity)}</option>`
     ).join('')}</optgroup>`;
   }
   const srcHtml = optsHtml
@@ -3656,7 +3677,7 @@ function mpSeekClick(e, el, duration) {
   const rect = el.getBoundingClientRect();
   const pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
   const pos  = Math.round(pct * duration);
-  const entity = D?.settings?.mediaEntity?.trim();
+  const entity = mediaActiveEntity || D?.settings?.mediaEntity?.trim();
   if (!entity) return;
   fetch('/api/ha/media/control', {
     method: 'POST',
@@ -3666,7 +3687,7 @@ function mpSeekClick(e, el, duration) {
 }
 
 async function mediaCtrl(action) {
-  const entity = D?.settings?.mediaEntity?.trim();
+  const entity = mediaActiveEntity || D?.settings?.mediaEntity?.trim();
   if (!entity) return;
   try {
     await fetch('/api/ha/media/control', {
@@ -3680,7 +3701,7 @@ async function mediaCtrl(action) {
 function mediaSetVol(v) {
   clearTimeout(mediaVolDebounce);
   mediaVolDebounce = setTimeout(async () => {
-    const entity = D?.settings?.mediaEntity?.trim();
+    const entity = mediaActiveEntity || D?.settings?.mediaEntity?.trim();
     if (!entity) return;
     try {
       await fetch('/api/ha/media/control', {
@@ -3692,28 +3713,33 @@ function mediaSetVol(v) {
 }
 
 async function mediaSwitchSrc(value) {
-  const entity = D?.settings?.mediaEntity?.trim();
-  if (!entity) return;
+  const primaryEntity = D?.settings?.mediaEntity?.trim();
+  if (!primaryEntity) return;
+
   if (value.startsWith('src:')) {
+    // Spotify Connect device — switch source on the primary entity and track it
     const source = value.slice(4);
+    mediaActiveEntity = primaryEntity;
     try {
       await fetch('/api/ha/media/source', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entity, source }),
+        body: JSON.stringify({ entity: primaryEntity, source }),
       });
       setTimeout(pollMedia, 800);
     } catch {}
   } else if (value.startsWith('ent:')) {
+    // Additional HA speaker entity — switch active tracking to it and transfer playback
     const target = value.slice(4);
+    mediaActiveEntity = target;
     if (mediaState?.mediaContentId && mediaState?.mediaContentType) {
       try {
         await fetch('/api/ha/media/play', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ entity: target, media_content_id: mediaState.mediaContentId, media_content_type: mediaState.mediaContentType }),
         });
-        setTimeout(pollMedia, 1000);
       } catch {}
     }
+    setTimeout(pollMedia, 800);
   }
 }
 
@@ -3731,7 +3757,7 @@ function closeMediaBrowser() {
 }
 
 async function _loadBrowser(type, id, title) {
-  const entity = D?.settings?.mediaEntity?.trim();
+  const entity = mediaActiveEntity || D?.settings?.mediaEntity?.trim();
   if (!entity) return;
   document.getElementById('media-browser-title').textContent = title || 'Browse';
   const list = document.getElementById('media-browser-list');
@@ -3807,7 +3833,7 @@ function _browserGoBack(idx) {
 }
 
 async function _browserPlay(btn) {
-  const entity = D?.settings?.mediaEntity?.trim();
+  const entity = mediaActiveEntity || D?.settings?.mediaEntity?.trim();
   if (!entity) return;
   const contentId   = btn.dataset.id;
   const contentType = btn.dataset.type;

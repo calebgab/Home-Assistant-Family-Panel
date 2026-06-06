@@ -612,7 +612,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .mp-artist { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
 .mp-progress { height: 3px; background: var(--border); border-radius: 2px; margin: 7px 0 5px; cursor: pointer; }
 .mp-progress-fill { height: 100%; background: var(--gold); border-radius: 2px; transition: width .5s linear; pointer-events: none; }
-.mp-ctrl { background: none; border: none; color: var(--muted); cursor: pointer; padding: 3px; border-radius: 4px; display: flex; align-items: center; transition: color var(--ease); }
+.mp-ctrl { background: none; border: none; color: var(--muted); cursor: pointer; padding: 6px; border-radius: 6px; display: flex; align-items: center; transition: color var(--ease); min-width: 36px; min-height: 36px; justify-content: center; }
 .mp-ctrl:hover, .mp-ctrl.active { color: var(--text); }
 .mp-ctrl.pp { color: var(--gold); }
 .mp-vol { -webkit-appearance: none; appearance: none; width: 56px; height: 3px; background: var(--border); border-radius: 2px; outline: none; cursor: pointer; }
@@ -3585,8 +3585,8 @@ function renderMedia(s) {
 
   // Play/pause icon
   const ppIcon = playing
-    ? `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>`
-    : `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>`;
+    ? `<svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>`
+    : `<svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>`;
 
   body.innerHTML = `
     <div style="display:flex;gap:10px;align-items:flex-start;">
@@ -3596,11 +3596,11 @@ function renderMedia(s) {
         ${progressHtml}
         <div style="display:flex;align-items:center;gap:4px;margin-top:4px;">
           <button class="mp-ctrl" onclick="mediaCtrl('prev')" title="Previous">
-            <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
           </button>
           <button class="mp-ctrl pp" onclick="mediaCtrl('play_pause')">${ppIcon}</button>
           <button class="mp-ctrl" onclick="mediaCtrl('next')" title="Next">
-            <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm8.5-6v6h2V6h-2z"/></svg>
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm8.5-6v6h2V6h-2z"/></svg>
           </button>
           <div style="flex:1"></div>
           <svg viewBox="0 0 24 24" width="13" height="13" style="color:var(--muted);flex-shrink:0;margin-right:2px" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>

@@ -291,7 +291,7 @@ async function haGetCalendar(entityId, startISO, endISO) {
 // ─────────────────────────────────────────────────────────
 //  IMMICH HTTP CLIENT
 // ─────────────────────────────────────────────────────────
-function immichRequest(immichUrl, apiKey, immichPath, asBuffer) {
+function immichRequest(immichUrl, apiKey, immichPath, asBuffer, postBody) {
   return new Promise((resolve, reject) => {
     let base;
     try { base = new URL(immichUrl); }
@@ -300,13 +300,18 @@ function immichRequest(immichUrl, apiKey, immichPath, asBuffer) {
     const isHttps = base.protocol === 'https:';
     const lib     = isHttps ? https : http;
     const port    = base.port ? parseInt(base.port, 10) : (isHttps ? 443 : 80);
+    const bodyStr = postBody ? JSON.stringify(postBody) : null;
 
     const options = {
       hostname: base.hostname,
       port,
       path:     immichPath,
-      method:   'GET',
-      headers:  { 'x-api-key': apiKey, 'Accept': asBuffer ? 'image/*' : 'application/json' },
+      method:   bodyStr ? 'POST' : 'GET',
+      headers:  {
+        'x-api-key': apiKey,
+        'Accept': asBuffer ? 'image/*' : 'application/json',
+        ...(bodyStr ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(bodyStr) } : {}),
+      },
     };
 
     const req = lib.request(options, res => {
@@ -323,8 +328,30 @@ function immichRequest(immichUrl, apiKey, immichPath, asBuffer) {
     });
     req.setTimeout(15000, () => { req.destroy(); reject(new Error('Immich request timed out')); });
     req.on('error', err => reject(new Error(`Immich connection error: ${err.message}`)));
+    if (bodyStr) req.write(bodyStr);
     req.end();
   });
+}
+
+// Immich v3 removed assets from GET /api/albums/{id}. Fetch via POST /api/search/metadata with pagination.
+async function immichGetAlbumAssets(url, apiKey, albumId) {
+  const assets = [];
+  let page = 1;
+  while (true) {
+    const r = await immichRequest(url, apiKey, '/api/search/metadata', false, {
+      albumId,
+      type: 'IMAGE',
+      withExif: true,
+      page,
+      size: 1000,
+    });
+    if (r.status !== 200) throw new Error(`Immich search returned ${r.status}: ${JSON.stringify(r.body)}`);
+    const items = r.body?.assets?.items || [];
+    assets.push(...items);
+    if (!r.body?.assets?.nextPage || items.length === 0) break;
+    page++;
+  }
+  return assets;
 }
 
 function getImmichCfg() {
@@ -926,18 +953,14 @@ code{background:#f4f1eb;padding:2px 7px;border-radius:4px;font-size:12px;}</styl
       if (r.status !== 200) { sendJSON(res, 200, result); return; }
     } catch(e) { step('auth', false, e.message); sendJSON(res, 200, result); return; }
 
-    // Step 3: fetch album
+    // Step 3: fetch album assets via search/metadata (Immich v3 removed assets from GET /albums/{id})
     if (!album) { step('album', false, 'No album selected — pick one in Admin → Photo Frame'); sendJSON(res, 200, result); return; }
     let assetId;
     try {
-      const r = await immichRequest(url, apiKey, `/api/albums/${encodeURIComponent(album)}`, false);
-      const all    = r.body?.assets || [];
-      const images = all.filter(a => a.type === 'IMAGE' && !a.isTrashed);
-      const videos = all.filter(a => a.type === 'VIDEO' && !a.isTrashed);
+      const images = await immichGetAlbumAssets(url, apiKey, album);
       const livePhotos = images.filter(a => a.livePhotoVideoId);
-      step('album', r.status === 200,
-        `HTTP ${r.status} — ${all.length} total, ${images.length} images (${livePhotos.length} Live Photos), ${videos.length} videos`);
-      if (r.status !== 200 || !images.length) { sendJSON(res, 200, result); return; }
+      step('album', true, `${images.length} images (${livePhotos.length} Live Photos)`);
+      if (!images.length) { sendJSON(res, 200, result); return; }
       assetId = images[0].id;
     } catch(e) { step('album', false, e.message); sendJSON(res, 200, result); return; }
 
@@ -981,16 +1004,8 @@ code{background:#f4f1eb;padding:2px 7px;border-radius:4px;font-size:12px;}</styl
       const albumId = qs.split('&').find(p => p.startsWith('albumId='))?.split('=')[1] || storedAlbum;
       if (!albumId) { sendJSON(res, 400, { error: 'No album configured — set one in Admin → Settings → Photo Frame' }); return; }
 
-      const r = await immichRequest(url, apiKey, `/api/albums/${encodeURIComponent(albumId)}`, false);
-      if (r.status !== 200) { sendJSON(res, r.status, { error: `Immich returned ${r.status}` }); return; }
-
-      // Include IMAGE type and Live Photos (which Immich stores as IMAGE with a livePhotoVideoId)
-      // Exclude pure video assets and trashed items
-      const all    = r.body.assets || [];
-      const byType = all.reduce((acc, a) => { acc[a.type] = (acc[a.type] || 0) + 1; return acc; }, {});
-      const assets = all
-        .filter(a => a.type === 'IMAGE' && !a.isTrashed)
-        .map(a => ({
+      const all = await immichGetAlbumAssets(url, apiKey, albumId);
+      const assets = all.map(a => ({
           id:            a.id,
           localDateTime: a.localDateTime || a.fileCreatedAt || null,
           city:          a.exifInfo?.city       || null,
@@ -1009,7 +1024,7 @@ code{background:#f4f1eb;padding:2px 7px;border-radius:4px;font-size:12px;}</styl
           fileName:      a.originalFileName       || null,
         }));
 
-      console.log(`  Photo frame: album has ${all.length} assets — ${JSON.stringify(byType)} — serving ${assets.length} images`);
+      console.log(`  Photo frame: serving ${assets.length} images from album`);
 
       // Fisher-Yates shuffle
       for (let i = assets.length - 1; i > 0; i--) {

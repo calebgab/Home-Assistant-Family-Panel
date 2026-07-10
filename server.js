@@ -339,7 +339,7 @@ async function immichGetAlbumAssets(url, apiKey, albumId) {
   let page = 1;
   while (true) {
     const r = await immichRequest(url, apiKey, '/api/search/metadata', false, {
-      albumId,
+      albumIds: [albumId],
       type: 'IMAGE',
       withExif: true,
       page,

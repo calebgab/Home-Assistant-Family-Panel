@@ -3465,7 +3465,7 @@ async function pollData() {
       // Re-init media player in case settings changed
       initMedia();
       // Re-arm idle timer in case frameIdleMinutes changed
-      if (D?.settings?.immichUrl && D?.settings?.immichApiKey && D?.settings?.immichAlbumId) {
+      if (D?.settings?.immichUrl && D?.settings?.immichApiKey && _hasPhotoFrameAlbums(D.settings)) {
         startIdleDetection();
       }
     }
@@ -3866,6 +3866,12 @@ function _closeAllOverlays() {
   document.querySelectorAll('.modal-overlay.open').forEach(function(o) { o.classList.remove('open'); });
 }
 
+// True once at least one photo-frame album is configured — new multi-select
+// immichAlbumIds, or the legacy single immichAlbumId from before that change.
+function _hasPhotoFrameAlbums(s) {
+  return (Array.isArray(s?.immichAlbumIds) && s.immichAlbumIds.length > 0) || !!s?.immichAlbumId;
+}
+
 async function enterPhotoFrame() {
   clearTimeout(pfIdleTimer);
   if (pfActive) return;
@@ -4212,7 +4218,7 @@ async function init() {
     // Start media player widget if enabled
     initMedia();
     // Start idle detection for photo frame (only if Immich is configured)
-    if (D?.settings?.immichUrl && D?.settings?.immichApiKey && D?.settings?.immichAlbumId) {
+    if (D?.settings?.immichUrl && D?.settings?.immichApiKey && _hasPhotoFrameAlbums(D.settings)) {
       startIdleDetection();
     }
   } catch (err) {

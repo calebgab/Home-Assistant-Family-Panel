@@ -354,12 +354,28 @@ async function immichGetAlbumAssets(url, apiKey, albumId) {
   return assets;
 }
 
+// Fetches assets across multiple albums, deduping photos that belong to more than one.
+async function immichGetAlbumsAssets(url, apiKey, albumIds) {
+  const assets = [];
+  const seen = new Set();
+  for (const albumId of albumIds) {
+    const items = await immichGetAlbumAssets(url, apiKey, albumId);
+    for (const item of items) {
+      if (!seen.has(item.id)) { seen.add(item.id); assets.push(item); }
+    }
+  }
+  return assets;
+}
+
 function getImmichCfg() {
   const d = getLiveData();
+  const s = d.settings || {};
+  let albums = Array.isArray(s.immichAlbumIds) ? s.immichAlbumIds.filter(Boolean) : [];
+  if (!albums.length && s.immichAlbumId) albums = [s.immichAlbumId]; // legacy single-album setting
   return {
-    url:    (d.settings?.immichUrl    || '').replace(/\/$/, ''),
-    apiKey: d.settings?.immichApiKey  || '',
-    album:  d.settings?.immichAlbumId || '',
+    url:    (s.immichUrl    || '').replace(/\/$/, ''),
+    apiKey: s.immichApiKey  || '',
+    albums,
   };
 }
 
@@ -931,8 +947,8 @@ code{background:#f4f1eb;padding:2px 7px;border-radius:4px;font-size:12px;}</styl
 
   // Diagnostic: tests connection → auth → album → photo proxy in sequence
   if (pathname === '/api/immich/test' && method === 'GET') {
-    const { url, apiKey, album } = getImmichCfg();
-    const result = { url, album_id: album, steps: [] };
+    const { url, apiKey, albums } = getImmichCfg();
+    const result = { url, album_ids: albums, steps: [] };
     const step = (name, ok, detail) => result.steps.push({ name, ok, detail });
 
     if (!url)    { step('config', false, 'immichUrl not set'); sendJSON(res, 200, result); return; }
@@ -954,12 +970,12 @@ code{background:#f4f1eb;padding:2px 7px;border-radius:4px;font-size:12px;}</styl
     } catch(e) { step('auth', false, e.message); sendJSON(res, 200, result); return; }
 
     // Step 3: fetch album assets via search/metadata (Immich v3 removed assets from GET /albums/{id})
-    if (!album) { step('album', false, 'No album selected — pick one in Admin → Photo Frame'); sendJSON(res, 200, result); return; }
+    if (!albums.length) { step('album', false, 'No album selected — pick one in Admin → Photo Frame'); sendJSON(res, 200, result); return; }
     let assetId;
     try {
-      const images = await immichGetAlbumAssets(url, apiKey, album);
+      const images = await immichGetAlbumsAssets(url, apiKey, albums);
       const livePhotos = images.filter(a => a.livePhotoVideoId);
-      step('album', true, `${images.length} images (${livePhotos.length} Live Photos)`);
+      step('album', true, `${images.length} images across ${albums.length} album${albums.length !== 1 ? 's' : ''} (${livePhotos.length} Live Photos)`);
       if (!images.length) { sendJSON(res, 200, result); return; }
       assetId = images[0].id;
     } catch(e) { step('album', false, e.message); sendJSON(res, 200, result); return; }
@@ -997,14 +1013,15 @@ code{background:#f4f1eb;padding:2px 7px;border-radius:4px;font-size:12px;}</styl
   // ?albumId=X overrides the stored album (for admin preview)
   if (pathname === '/api/immich/photos' && method === 'GET') {
     try {
-      const { url, apiKey, album: storedAlbum } = getImmichCfg();
+      const { url, apiKey, albums: storedAlbums } = getImmichCfg();
       if (!url || !apiKey) { sendJSON(res, 400, { error: 'Immich not configured' }); return; }
-      const qIdx    = req.url.indexOf('?');
-      const qs      = qIdx !== -1 ? req.url.slice(qIdx + 1) : '';
-      const albumId = qs.split('&').find(p => p.startsWith('albumId='))?.split('=')[1] || storedAlbum;
-      if (!albumId) { sendJSON(res, 400, { error: 'No album configured — set one in Admin → Settings → Photo Frame' }); return; }
+      const qIdx     = req.url.indexOf('?');
+      const qs       = qIdx !== -1 ? req.url.slice(qIdx + 1) : '';
+      const albumId  = qs.split('&').find(p => p.startsWith('albumId='))?.split('=')[1];
+      const albumIds = albumId ? [albumId] : storedAlbums;
+      if (!albumIds.length) { sendJSON(res, 400, { error: 'No album configured — set one in Admin → Settings → Photo Frame' }); return; }
 
-      const all = await immichGetAlbumAssets(url, apiKey, albumId);
+      const all = await immichGetAlbumsAssets(url, apiKey, albumIds);
       const assets = all.map(a => ({
           id:            a.id,
           localDateTime: a.localDateTime || a.fileCreatedAt || null,

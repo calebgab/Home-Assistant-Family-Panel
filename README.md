@@ -351,7 +351,7 @@ Visit **http://your-server:8080/admin** to configure everything.
 |---|---|
 | Immich URL | - |
 | Immich API Key | - |
-| Album | - |
+| Albums | - (multi-select — photos are pooled from every album checked) |
 | Idle timeout (minutes) | 5 |
 | Photo interval (seconds) | 20 |
 | Tap zones | On |

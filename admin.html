@@ -1149,14 +1149,14 @@ proxy_set_header X-Forwarded-Proto $scheme;</pre>
         </div>
         <div class="setting-row">
           <div class="setting-info">
-            <div class="setting-name">Album</div>
-            <div class="setting-desc">The album to show — e.g. your Favourites album</div>
+            <div class="setting-name">Albums</div>
+            <div class="setting-desc">Photos are pooled from every album checked below — e.g. your Favourites album</div>
           </div>
-          <div class="setting-control" style="min-width:230px;display:flex;gap:8px;align-items:center;">
-            <select id="cfg-immich-album" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:12px;font-family:inherit;">
-              <option value="">— load albums first —</option>
-            </select>
-            <button class="btn btn-secondary btn-sm" onclick="loadImmichAlbums()" id="load-albums-btn">Load</button>
+          <div class="setting-control" style="min-width:230px;display:flex;flex-direction:column;gap:8px;align-items:stretch;">
+            <div id="cfg-immich-albums-list" style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:var(--surface2);padding:4px;">
+              <div style="padding:8px 10px;font-size:12px;color:var(--muted);">— load albums first —</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="loadImmichAlbums()" id="load-albums-btn" style="align-self:flex-start;">Load albums</button>
           </div>
         </div>
         <div class="setting-row">
@@ -2756,6 +2756,50 @@ async function saveSettings() {
 // ═══════════════════════════════════════════════════════════
 //  PHOTO FRAME SETTINGS
 // ═══════════════════════════════════════════════════════════
+let _immichAlbumsCache = []; // [{id, name, count}] from the last successful /api/immich/albums load
+
+// Legacy single-album settings (immichAlbumId/immichAlbumName) are read as a
+// one-item fallback when the new multi-select immichAlbumIds hasn't been saved yet.
+function _selectedAlbumIds() {
+  const s = D.settings || {};
+  if (Array.isArray(s.immichAlbumIds)) return s.immichAlbumIds.filter(Boolean);
+  return s.immichAlbumId ? [s.immichAlbumId] : [];
+}
+
+function _selectedAlbumNames() {
+  const s = D.settings || {};
+  if (s.immichAlbumNames && typeof s.immichAlbumNames === 'object') return s.immichAlbumNames;
+  if (s.immichAlbumId && s.immichAlbumName) return { [s.immichAlbumId]: s.immichAlbumName };
+  return {};
+}
+
+function _currentCheckedAlbumIds() {
+  return [...document.querySelectorAll('#cfg-immich-albums-list input[type=checkbox]:checked')].map(c => c.value);
+}
+
+function renderImmichAlbumsList(selectedIdsOverride) {
+  const selectedIds   = new Set(selectedIdsOverride || _selectedAlbumIds());
+  const selectedNames = _selectedAlbumNames();
+  const list = document.getElementById('cfg-immich-albums-list');
+
+  // Merge loaded albums with any saved-but-not-yet-loaded selections so they aren't lost
+  const albums = [..._immichAlbumsCache];
+  selectedIds.forEach(id => {
+    if (!albums.some(a => a.id === id)) albums.push({ id, name: selectedNames[id] || id, count: null });
+  });
+
+  if (!albums.length) {
+    list.innerHTML = '<div style="padding:8px 10px;font-size:12px;color:var(--muted);">— load albums first —</div>';
+    return;
+  }
+  list.innerHTML = albums.map(a => `
+    <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;font-size:12px;cursor:pointer;">
+      <input type="checkbox" value="${a.id}" ${selectedIds.has(a.id) ? 'checked' : ''} style="width:15px;height:15px;accent-color:var(--gold);cursor:pointer;flex-shrink:0;">
+      <span>${a.name}${a.count != null ? ` (${a.count} photos)` : ''}</span>
+    </label>
+  `).join('');
+}
+
 function renderPhotoFrameSettings() {
   const s = D.settings || {};
   document.getElementById('cfg-immich-url').value     = s.immichUrl    || '';
@@ -2765,17 +2809,7 @@ function renderPhotoFrameSettings() {
   const tapZones = s.frameTapZones !== false;
   document.getElementById('cfg-frame-tapzones').checked          = tapZones;
   document.getElementById('cfg-frame-tapzones-label').textContent = tapZones ? 'Enabled' : 'Disabled';
-  // Pre-select saved album if list is already populated
-  if (s.immichAlbumId) {
-    const sel = document.getElementById('cfg-immich-album');
-    const existing = [...sel.options].find(o => o.value === s.immichAlbumId);
-    if (!existing) {
-      const o = document.createElement('option');
-      o.value = s.immichAlbumId; o.textContent = s.immichAlbumName || s.immichAlbumId;
-      sel.appendChild(o);
-    }
-    sel.value = s.immichAlbumId;
-  }
+  renderImmichAlbumsList();
 }
 
 async function savePhotoFrameSettings() {
@@ -2787,11 +2821,19 @@ async function savePhotoFrameSettings() {
   D.settings.frameIdleMinutes  = parseInt(document.getElementById('cfg-frame-idle').value)    || 5;
   D.settings.frameIntervalSecs = parseInt(document.getElementById('cfg-frame-interval').value) || 20;
   D.settings.frameTapZones     = document.getElementById('cfg-frame-tapzones').checked;
-  const albumSel = document.getElementById('cfg-immich-album');
-  if (albumSel.value) {
-    D.settings.immichAlbumId   = albumSel.value;
-    D.settings.immichAlbumName = albumSel.selectedOptions[0]?.textContent || albumSel.value;
+
+  const checkboxes = [...document.querySelectorAll('#cfg-immich-albums-list input[type=checkbox]')];
+  if (checkboxes.length) {
+    const checked = checkboxes.filter(c => c.checked);
+    D.settings.immichAlbumIds   = checked.map(c => c.value);
+    D.settings.immichAlbumNames = {};
+    checked.forEach(c => {
+      D.settings.immichAlbumNames[c.value] = c.parentElement.querySelector('span')?.textContent || c.value;
+    });
+    delete D.settings.immichAlbumId;
+    delete D.settings.immichAlbumName;
   }
+
   await pushData();
   toast('Photo frame settings saved!');
 }
@@ -3518,25 +3560,21 @@ async function loadImmichAlbums() {
   if (key && !key.startsWith('•')) { D.settings = D.settings || {}; D.settings.immichApiKey = key; }
   if (url || (key && !key.startsWith('•'))) await pushData();
 
+  // Preserve any in-progress (unsaved) checkbox selections across a reload
+  const hadCheckboxes = document.querySelectorAll('#cfg-immich-albums-list input[type=checkbox]').length > 0;
+  const priorChecked  = hadCheckboxes ? _currentCheckedAlbumIds() : undefined;
+
   try {
     const r = await fetch('/api/immich/albums');
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
-    const sel = document.getElementById('cfg-immich-album');
-    const current = sel.value;
-    sel.innerHTML = '<option value="">— choose an album —</option>';
-    d.forEach(album => {
-      const o = document.createElement('option');
-      o.value = album.id;
-      o.textContent = `${album.name} (${album.count} photos)`;
-      sel.appendChild(o);
-    });
-    if (current) sel.value = current;
+    _immichAlbumsCache = d;
+    renderImmichAlbumsList(priorChecked);
     toast(`${d.length} album${d.length !== 1 ? 's' : ''} loaded`);
   } catch (e) {
     toast('Could not load albums: ' + e.message, 'err');
   }
-  btn.disabled = false; btn.textContent = 'Load';
+  btn.disabled = false; btn.textContent = 'Load albums';
 }
 
 async function testImmich() {
